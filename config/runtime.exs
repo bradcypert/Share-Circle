@@ -59,8 +59,10 @@ if config_env() == :prod do
         bucket: System.get_env("STORAGE_S3_BUCKET") || raise("STORAGE_S3_BUCKET is missing"),
         region: System.get_env("STORAGE_S3_REGION", "auto"),
         endpoint: System.get_env("STORAGE_S3_ENDPOINT"),
-        access_key: System.get_env("STORAGE_S3_ACCESS_KEY") || raise("STORAGE_S3_ACCESS_KEY is missing"),
-        secret_key: System.get_env("STORAGE_S3_SECRET_KEY") || raise("STORAGE_S3_SECRET_KEY is missing")
+        access_key:
+          System.get_env("STORAGE_S3_ACCESS_KEY") || raise("STORAGE_S3_ACCESS_KEY is missing"),
+        secret_key:
+          System.get_env("STORAGE_S3_SECRET_KEY") || raise("STORAGE_S3_SECRET_KEY is missing")
 
     _ ->
       config :share_circle, :storage_adapter, ShareCircle.Storage.Local
@@ -86,7 +88,8 @@ if config_env() == :prod do
         adapter: Swoosh.Adapters.AmazonSES,
         region: System.get_env("AWS_REGION") || raise("AWS_REGION is missing"),
         access_key: System.get_env("AWS_ACCESS_KEY_ID") || raise("AWS_ACCESS_KEY_ID is missing"),
-        secret: System.get_env("AWS_SECRET_ACCESS_KEY") || raise("AWS_SECRET_ACCESS_KEY is missing")
+        secret:
+          System.get_env("AWS_SECRET_ACCESS_KEY") || raise("AWS_SECRET_ACCESS_KEY is missing")
 
     _ ->
       config :share_circle, ShareCircle.Mailer,
@@ -109,7 +112,8 @@ if config_env() == :prod do
 
       config :share_circle, ShareCircle.Billing.Stripe,
         secret_key: System.get_env("STRIPE_SECRET_KEY") || raise("STRIPE_SECRET_KEY is missing"),
-        webhook_secret: System.get_env("STRIPE_WEBHOOK_SECRET") || raise("STRIPE_WEBHOOK_SECRET is missing")
+        webhook_secret:
+          System.get_env("STRIPE_WEBHOOK_SECRET") || raise("STRIPE_WEBHOOK_SECRET is missing")
 
     _ ->
       config :share_circle, :billing_adapter, ShareCircle.Billing.Noop
