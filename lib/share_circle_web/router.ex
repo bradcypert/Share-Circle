@@ -15,6 +15,16 @@ defmodule ShareCircleWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+    plug ShareCircleWeb.Plugs.AuthenticateApi
+    plug ShareCircleWeb.Plugs.RateLimit, bucket: :read
+  end
+
+  pipeline :api_write do
+    plug ShareCircleWeb.Plugs.RateLimit, bucket: :write
+  end
+
+  pipeline :api_family do
+    plug ShareCircleWeb.Plugs.LoadCurrentFamily
   end
 
   scope "/", ShareCircleWeb do
@@ -23,10 +33,13 @@ defmodule ShareCircleWeb.Router do
     get "/", PageController, :home
   end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", ShareCircleWeb do
-  #   pipe_through :api
-  # end
+  scope "/api/v1", ShareCircleWeb.Api.V1 do
+    pipe_through :api
+
+    scope "/families/:family_id" do
+      pipe_through :api_family
+    end
+  end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:share_circle, :dev_routes) do

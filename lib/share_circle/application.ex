@@ -12,9 +12,7 @@ defmodule ShareCircle.Application do
       ShareCircle.Repo,
       {DNSCluster, query: Application.get_env(:share_circle, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: ShareCircle.PubSub},
-      # Start a worker by calling: ShareCircle.Worker.start_link(arg)
-      # {ShareCircle.Worker, arg},
-      # Start to serve requests, typically the last entry
+      ShareCircle.RateLimiter,
       ShareCircleWeb.Endpoint
     ]
 

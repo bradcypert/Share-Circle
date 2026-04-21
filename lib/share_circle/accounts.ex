@@ -280,6 +280,24 @@ defmodule ShareCircle.Accounts do
     UserNotifier.deliver_login_instructions(user, magic_link_url_fun.(encoded_token))
   end
 
+  ## API tokens
+
+  @doc "Generates a long-lived API token for the user. Returns the raw token string."
+  def generate_user_api_token(user) do
+    {token, user_token} = UserToken.build_api_token(user)
+    Repo.insert!(user_token)
+    token
+  end
+
+  @doc "Looks up the user by a raw API Bearer token. Returns %User{} or nil."
+  def get_user_by_api_token(token) when is_binary(token) do
+    with {:ok, query} <- UserToken.verify_api_token_query(token) do
+      Repo.one(query)
+    else
+      _ -> nil
+    end
+  end
+
   @doc """
   Deletes the signed token with the given context.
   """

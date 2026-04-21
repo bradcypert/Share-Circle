@@ -10,6 +10,7 @@ defmodule ShareCircle.Accounts.UserToken do
   @magic_link_validity_in_minutes 15
   @change_email_validity_in_days 7
   @session_validity_in_days 14
+  @api_token_validity_in_days 365
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -143,6 +144,30 @@ defmodule ShareCircle.Accounts.UserToken do
         query =
           from token in by_token_and_context_query(hashed_token, context),
             where: token.inserted_at > ago(@change_email_validity_in_days, "day")
+
+        {:ok, query}
+
+      :error ->
+        :error
+    end
+  end
+
+  @doc "Builds a long-lived API token (hashed). Returns {raw_token, %UserToken{}}."
+  def build_api_token(user) do
+    build_hashed_token(user, "api", nil)
+  end
+
+  @doc "Returns a query that resolves the user for a valid API token, or nil."
+  def verify_api_token_query(token) do
+    case Base.url_decode64(token, padding: false) do
+      {:ok, decoded_token} ->
+        hashed_token = :crypto.hash(@hash_algorithm, decoded_token)
+
+        query =
+          from token in by_token_and_context_query(hashed_token, "api"),
+            join: user in assoc(token, :user),
+            where: token.inserted_at > ago(@api_token_validity_in_days, "day"),
+            select: user
 
         {:ok, query}
 
