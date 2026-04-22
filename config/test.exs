@@ -42,3 +42,10 @@ config :phoenix_live_view,
 # Sort query params output of verified routes for robust url comparisons
 config :phoenix,
   sort_verified_routes_query_params: true
+
+config :share_circle, Oban, testing: :inline
+
+config :share_circle, :storage_adapter, ShareCircle.Storage.Local
+
+config :share_circle, ShareCircle.Storage.Local,
+  path: Path.expand("../tmp/test_uploads", __DIR__)

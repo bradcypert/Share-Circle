@@ -280,6 +280,54 @@ defmodule ShareCircle.Accounts do
     UserNotifier.deliver_login_instructions(user, magic_link_url_fun.(encoded_token))
   end
 
+  ## Password reset
+
+  @doc "Sends a password-reset email. Always returns :ok — doesn't reveal whether the email exists."
+  def deliver_user_reset_password_instructions(%User{} = user, reset_url_fun)
+      when is_function(reset_url_fun, 1) do
+    {encoded_token, user_token} = UserToken.build_reset_password_token(user)
+    Repo.insert!(user_token)
+    UserNotifier.deliver_reset_password_instructions(user, reset_url_fun.(encoded_token))
+  end
+
+  @doc "Validates the reset token and updates the password. Deletes all tokens on success."
+  def reset_user_password(token, attrs) do
+    with {:ok, query} <- UserToken.verify_reset_password_token_query(token),
+         {%User{} = user, _token} <- Repo.one(query) do
+      user
+      |> User.password_changeset(attrs)
+      |> update_user_and_delete_all_tokens()
+    else
+      _ -> {:error, :invalid_or_expired_token}
+    end
+  end
+
+  ## Email confirmation
+
+  @doc "Sends a confirmation email for password-based signups."
+  def deliver_user_confirmation_instructions(%User{confirmed_at: nil} = user, confirm_url_fun)
+      when is_function(confirm_url_fun, 1) do
+    {encoded_token, user_token} = UserToken.build_confirmation_token(user)
+    Repo.insert!(user_token)
+    UserNotifier.deliver_confirmation_instructions(user, confirm_url_fun.(encoded_token))
+  end
+
+  def deliver_user_confirmation_instructions(%User{}, _fun), do: {:error, :already_confirmed}
+
+  @doc "Confirms the user's email address via the token sent in the confirmation email."
+  def confirm_user_email(token) do
+    with {:ok, query} <- UserToken.verify_confirmation_token_query(token),
+         {%User{} = user, token_record} <- Repo.one(query) do
+      Repo.transaction(fn ->
+        Repo.delete!(token_record)
+        {:ok, user} = Repo.update(User.confirm_changeset(user))
+        user
+      end)
+    else
+      _ -> {:error, :invalid_or_expired_token}
+    end
+  end
+
   ## API tokens
 
   @doc "Generates a long-lived API token for the user. Returns the raw token string."
@@ -296,6 +344,49 @@ defmodule ShareCircle.Accounts do
     else
       _ -> nil
     end
+  end
+
+  @doc "Deletes the API token identified by its raw value (used for logout)."
+  def delete_user_api_token(raw_token) when is_binary(raw_token) do
+    case Base.url_decode64(raw_token, padding: false) do
+      {:ok, decoded} ->
+        hashed = :crypto.hash(:sha256, decoded)
+        Repo.delete_all(from(UserToken, where: [token: ^hashed, context: "api"]))
+        :ok
+
+      :error ->
+        :ok
+    end
+  end
+
+  @doc "Lists all active API tokens for a user (for session management UI)."
+  def list_user_api_tokens(%User{id: user_id}) do
+    UserToken.by_user_api_tokens_query(user_id)
+    |> Repo.all()
+  end
+
+  @doc "Deletes a specific API token by ID, only if owned by the given user."
+  def delete_user_api_token_by_id(%User{id: user_id}, token_id) do
+    case Repo.get_by(UserToken, id: token_id, user_id: user_id, context: "api") do
+      nil -> {:error, :not_found}
+      token -> Repo.delete(token)
+    end
+  end
+
+  @doc "Updates the user's profile fields (display_name, timezone, locale)."
+  def update_user_profile(%User{} = user, attrs) do
+    user
+    |> User.profile_changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc "Soft-deletes the user and revokes all their tokens."
+  def soft_delete_user(%User{} = user) do
+    Repo.transaction(fn ->
+      Repo.delete_all(from(t in UserToken, where: t.user_id == ^user.id))
+      {:ok, user} = Repo.update(Ecto.Changeset.change(user, deleted_at: DateTime.utc_now(:microsecond)))
+      user
+    end)
   end
 
   @doc """

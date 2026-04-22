@@ -8,6 +8,8 @@ defmodule ShareCircle.Accounts.UserToken do
   # It is very important to keep the magic link token expiry short,
   # since someone with access to the email may take over the account.
   @magic_link_validity_in_minutes 15
+  @reset_password_validity_in_minutes 30
+  @confirmation_validity_in_days 7
   @change_email_validity_in_days 7
   @session_validity_in_days 14
   @api_token_validity_in_days 365
@@ -150,6 +152,61 @@ defmodule ShareCircle.Accounts.UserToken do
       :error ->
         :error
     end
+  end
+
+  @doc "Builds a 30-minute password-reset token. Returns {raw_token, %UserToken{}}."
+  def build_reset_password_token(user) do
+    build_hashed_token(user, "reset_password", user.email)
+  end
+
+  @doc "Returns a query that resolves the user for a valid reset-password token."
+  def verify_reset_password_token_query(token) do
+    case Base.url_decode64(token, padding: false) do
+      {:ok, decoded_token} ->
+        hashed_token = :crypto.hash(@hash_algorithm, decoded_token)
+
+        query =
+          from token in by_token_and_context_query(hashed_token, "reset_password"),
+            join: user in assoc(token, :user),
+            where: token.inserted_at > ago(@reset_password_validity_in_minutes, "minute"),
+            where: token.sent_to == user.email,
+            select: {user, token}
+
+        {:ok, query}
+
+      :error ->
+        :error
+    end
+  end
+
+  @doc "Builds a 7-day email confirmation token. Returns {raw_token, %UserToken{}}."
+  def build_confirmation_token(user) do
+    build_hashed_token(user, "confirm", user.email)
+  end
+
+  @doc "Returns a query that resolves the user for a valid confirmation token."
+  def verify_confirmation_token_query(token) do
+    case Base.url_decode64(token, padding: false) do
+      {:ok, decoded_token} ->
+        hashed_token = :crypto.hash(@hash_algorithm, decoded_token)
+
+        query =
+          from token in by_token_and_context_query(hashed_token, "confirm"),
+            join: user in assoc(token, :user),
+            where: token.inserted_at > ago(@confirmation_validity_in_days, "day"),
+            where: token.sent_to == user.email,
+            select: {user, token}
+
+        {:ok, query}
+
+      :error ->
+        :error
+    end
+  end
+
+  @doc "Returns all API tokens for a user (for session listing)."
+  def by_user_api_tokens_query(user_id) do
+    from __MODULE__, where: [user_id: ^user_id, context: "api"], order_by: [desc: :inserted_at]
   end
 
   @doc "Builds a long-lived API token (hashed). Returns {raw_token, %UserToken{}}."

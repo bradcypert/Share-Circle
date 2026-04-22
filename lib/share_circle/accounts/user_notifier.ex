@@ -67,18 +67,35 @@ defmodule ShareCircle.Accounts.UserNotifier do
     """)
   end
 
-  defp deliver_confirmation_instructions(user, url) do
-    deliver(user.email, "Confirmation instructions", """
+  def deliver_confirmation_instructions(user, url) do
+    deliver(user.email, "Confirm your ShareCircle account", """
 
     ==============================
 
-    Hi #{user.email},
+    Hi #{user.display_name},
 
-    You can confirm your account by visiting the URL below:
+    Please confirm your account by visiting the URL below:
 
     #{url}
 
     If you didn't create an account with us, please ignore this.
+
+    ==============================
+    """)
+  end
+
+  def deliver_reset_password_instructions(user, url) do
+    deliver(user.email, "Reset your ShareCircle password", """
+
+    ==============================
+
+    Hi #{user.display_name},
+
+    You can reset your password by visiting the URL below (valid for 30 minutes):
+
+    #{url}
+
+    If you didn't request a reset, please ignore this.
 
     ==============================
     """)

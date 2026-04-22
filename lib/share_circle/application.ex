@@ -13,6 +13,7 @@ defmodule ShareCircle.Application do
       {DNSCluster, query: Application.get_env(:share_circle, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: ShareCircle.PubSub},
       ShareCircle.RateLimiter,
+      {Oban, Application.fetch_env!(:share_circle, Oban)},
       ShareCircleWeb.Endpoint
     ]
 

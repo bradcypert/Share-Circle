@@ -68,6 +68,8 @@ defmodule ShareCircle.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:open_api_spex, "~> 3.21"},
+      {:oban, "~> 2.18"},
+      {:vix, "~> 0.26"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ]
   end

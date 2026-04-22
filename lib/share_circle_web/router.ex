@@ -17,6 +17,11 @@ defmodule ShareCircleWeb.Router do
     plug :accepts, ["html", "json"]
   end
 
+  pipeline :api_public do
+    plug :accepts, ["json"]
+    plug ShareCircleWeb.Plugs.RateLimit, bucket: :auth
+  end
+
   pipeline :api do
     plug :accepts, ["json"]
     plug ShareCircleWeb.Plugs.AuthenticateApi
@@ -45,12 +50,48 @@ defmodule ShareCircleWeb.Router do
     get "/docs", OpenApiSpex.Plug.SwaggerUI, path: "/api/v1/openapi.json"
   end
 
+  # Public auth endpoints (no token required)
+  scope "/api/v1/auth", ShareCircleWeb.Api.V1 do
+    pipe_through :api_public
+
+    post "/register", AuthController, :register
+    post "/login", AuthController, :login
+    post "/password/reset/request", AuthController, :request_password_reset
+    post "/password/reset/confirm", AuthController, :confirm_password_reset
+    post "/email/confirm", AuthController, :confirm_email
+  end
+
   scope "/api/v1", ShareCircleWeb.Api.V1 do
     pipe_through :api
 
-    # Single-resource routes — no family_id in URL, membership checked in context
+    # Authenticated auth management
+    post "/auth/logout", AuthController, :logout
+    post "/auth/refresh", AuthController, :refresh
+    post "/auth/email/resend", AuthController, :resend_confirmation
+    get "/auth/sessions", AuthController, :list_sessions
+    delete "/auth/sessions/:id", AuthController, :delete_session
+
+    # Current user
+    get "/me", MeController, :show
+    patch "/me", MeController, :update
+    delete "/me", MeController, :delete
+    get "/me/families", MeController, :families
+
+    # Create family (no family context yet)
+    post "/families", FamilyController, :create
+
+    # Accept invitation (authenticated, not family-scoped)
+    post "/invitations/:token/accept", InvitationController, :accept
+
+    # Media download (access-controlled redirect to presigned URL)
+    get "/media/:id/download", MediaController, :download
+
+    # Complete upload (not family-scoped; session carries family context)
+    post "/uploads/:upload_id/complete", UploadController, :complete_upload
+
+    # Single-resource post/comment routes (membership checked in context)
     resources "/posts", PostController, only: [:show, :update, :delete] do
-      resources "/comments", CommentController, only: [:index, :create]
+      resources "/comments", CommentController, only: [:index]
       put "/reactions/:emoji", ReactionController, :upsert
       delete "/reactions/:emoji", ReactionController, :delete
     end
@@ -60,22 +101,50 @@ defmodule ShareCircleWeb.Router do
       delete "/reactions/:emoji", ReactionController, :delete
     end
 
+    # Family-scoped routes (LoadCurrentFamily required)
     scope "/families/:family_id" do
-      pipe_through [:api_family, :api_write]
+      pipe_through :api_family
 
-      resources "/posts", PostController, only: [:index, :create]
+      get "/", FamilyController, :show
+      get "/members", MemberController, :index
+      get "/invitations", InvitationController, :index
 
-      scope "/posts/:post_id" do
-        resources "/comments", CommentController, only: [:create]
+      scope "/" do
+        pipe_through :api_write
+
+        patch "/", FamilyController, :update
+        delete "/", FamilyController, :delete
+        delete "/members/:user_id", MemberController, :delete
+        patch "/members/:user_id", MemberController, :update
+        post "/invitations", InvitationController, :create
+        delete "/invitations/:id", InvitationController, :delete
+
+        resources "/posts", PostController, only: [:index, :create]
+
+        scope "/posts/:post_id" do
+          resources "/comments", CommentController, only: [:create]
+        end
+
+        # Initiate upload — family context required
+        post "/uploads/init", UploadController, :init_upload
       end
     end
   end
 
-  # Feed LiveView — requires authenticated browser session with family context
+  # Local blob upload/download (signed token auth, no Bearer token required)
+  scope "/api/v1", ShareCircleWeb.Api.V1 do
+    put "/local-blob/:token", LocalBlobController, :upload
+    get "/local-blob/:token", LocalBlobController, :download
+  end
+
   scope "/", ShareCircleWeb do
     pipe_through [:browser, :require_authenticated_user]
 
-    live "/feed", FeedLive, :index
+    live_session :require_authenticated_user,
+      on_mount: [{ShareCircleWeb.UserAuth, :require_authenticated_user}] do
+      live "/families", FamilySetupLive, :index
+      live "/families/:family_id/feed", FeedLive, :index
+    end
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development

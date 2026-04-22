@@ -90,3 +90,8 @@ config :phoenix_live_view,
 
 # Disable swoosh api client as it is only required for production adapters.
 config :swoosh, :api_client, false
+
+config :share_circle, :storage_adapter, ShareCircle.Storage.Local
+
+config :share_circle, ShareCircle.Storage.Local,
+  path: Path.expand("../uploads", __DIR__)

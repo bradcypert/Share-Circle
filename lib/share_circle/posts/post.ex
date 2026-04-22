@@ -20,6 +20,7 @@ defmodule ShareCircle.Posts.Post do
     field :deleted_at, :utc_datetime_usec
 
     has_many :comments, ShareCircle.Posts.Comment
+    has_many :post_media, ShareCircle.Media.PostMedia
 
     timestamps(type: :utc_datetime_usec)
   end

@@ -29,6 +29,15 @@ defmodule ShareCircle.Families do
     |> unwrap_transaction()
   end
 
+  @doc "Soft-deletes the family. Only the owner can do this."
+  def delete_family(%Scope{membership: membership, family: family}) do
+    with :ok <- Policy.authorize(membership, :delete_family) do
+      family
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:microsecond))
+      |> Repo.update()
+    end
+  end
+
   @doc "Updates the family. Requires :update_family permission."
   def update_family(%Scope{membership: membership, family: family}, attrs) do
     with :ok <- Policy.authorize(membership, :update_family) do
@@ -138,6 +147,14 @@ defmodule ShareCircle.Families do
   # ---------------------------------------------------------------------------
   # Helpers for loading scope
   # ---------------------------------------------------------------------------
+
+  @doc "Returns all memberships (with family preloaded) for the given user."
+  def list_families_for_user(%Scope{user: %{id: user_id}}) do
+    Membership
+    |> where(user_id: ^user_id)
+    |> preload(:family)
+    |> Repo.all()
+  end
 
   @doc "Loads the family and membership for a user, used to populate Scope."
   def get_membership_for_user(family_id, user_id) do

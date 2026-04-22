@@ -1,0 +1,59 @@
+<div class="max-w-lg mx-auto px-4 py-12">
+  <h1 class="text-2xl font-bold text-base-content mb-6">Welcome to ShareCircle</h1>
+
+  <%= if @memberships != [] do %>
+    <div class="flex gap-4 mb-6 border-b border-base-300">
+      <button
+        phx-click="switch_tab"
+        phx-value-tab="pick"
+        class={["pb-2 text-sm font-medium", if(@tab == :pick, do: "border-b-2 border-primary text-primary", else: "text-base-content/60")]}
+      >
+        Your Families
+      </button>
+      <button
+        phx-click="switch_tab"
+        phx-value-tab="create"
+        class={["pb-2 text-sm font-medium", if(@tab == :create, do: "border-b-2 border-primary text-primary", else: "text-base-content/60")]}
+      >
+        Create New
+      </button>
+    </div>
+  <% end %>
+
+  <%= if @tab == :pick do %>
+    <div class="space-y-3">
+      <%= for m <- @memberships do %>
+        <button
+          phx-click="select_family"
+          phx-value-id={m.family.id}
+          class="w-full text-left p-4 border border-base-300 rounded-lg hover:bg-base-200 flex items-center justify-between"
+        >
+          <div>
+            <p class="font-medium text-base-content">{m.family.name}</p>
+            <p class="text-sm text-base-content/60 capitalize">{m.role}</p>
+          </div>
+          <span class="text-base-content/40">→</span>
+        </button>
+      <% end %>
+    </div>
+  <% end %>
+
+  <%= if @tab == :create do %>
+    <.form for={@form} phx-submit="create_family" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-base-content mb-1">Family name</label>
+        <.input field={@form[:name]} placeholder="The Smiths" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-base-content mb-1">URL slug</label>
+        <.input field={@form[:slug]} placeholder="smiths" />
+        <p class="text-xs text-base-content/50 mt-1">Lowercase letters, numbers, and hyphens only</p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-base-content mb-1">Timezone</label>
+        <.input field={@form[:timezone]} placeholder="America/New_York" />
+      </div>
+      <.button type="submit" class="w-full">Create Family</.button>
+    </.form>
+  <% end %>
+</div>

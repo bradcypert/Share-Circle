@@ -13,6 +13,7 @@ defmodule ShareCircle.Posts do
   alias ShareCircle.Events
   alias ShareCircle.Families
   alias ShareCircle.Families.Policy
+  alias ShareCircle.Media.PostMedia
   alias ShareCircle.Posts.{Comment, Post, Reaction}
   alias ShareCircle.Repo
 
@@ -34,7 +35,7 @@ defmodule ShareCircle.Posts do
         where: p.family_id == ^family.id and is_nil(p.deleted_at),
         order_by: [desc: p.inserted_at, desc: p.id],
         limit: ^(limit + 1),
-        preload: [:author]
+        preload: [:author, post_media: [media_item: :variants]]
 
     posts = query |> apply_cursor(cursor) |> Repo.all()
     {items, has_more} = split_page(posts, limit)
@@ -45,24 +46,42 @@ defmodule ShareCircle.Posts do
   def get_post(%Scope{user: user}, post_id) do
     with %Post{deleted_at: nil} = post <- Repo.get_by(Post, id: post_id, deleted_at: nil),
          true <- member?(post.family_id, user.id) do
-      {:ok, Repo.preload(post, :author)}
+      {:ok, Repo.preload(post, [:author, post_media: [media_item: :variants]])}
     else
       nil -> {:error, :not_found}
       false -> {:error, :not_found}
     end
   end
 
-  @doc "Creates a text post. Scope must have family and membership."
+  @doc "Creates a post. Scope must have family and membership. Accepts optional `media_ids` list."
   def create_post(%Scope{user: user, family: family, membership: membership}, attrs) do
     with :ok <- Policy.authorize(membership, :create_post) do
-      %Post{family_id: family.id, author_id: user.id}
-      |> Post.changeset(Map.put_new(attrs, "kind", "text"))
-      |> Repo.insert()
-      |> tap_broadcast(fn post ->
-        post = Repo.preload(post, :author)
+      media_ids = Map.get(attrs, "media_ids", [])
+      kind = infer_kind(attrs, media_ids)
+
+      with {:ok, post} <-
+             Repo.transaction(fn ->
+               post =
+                 %Post{family_id: family.id, author_id: user.id}
+                 |> Post.changeset(Map.put(attrs, "kind", kind))
+                 |> Repo.insert!()
+
+               Enum.with_index(media_ids, fn media_id, i ->
+                 Repo.insert!(
+                   PostMedia.changeset(%{
+                     post_id: post.id,
+                     media_item_id: media_id,
+                     position: i
+                   }),
+                   on_conflict: :nothing
+                 )
+               end)
+
+               Repo.preload(post, [:author, post_media: [media_item: :variants]])
+             end) do
         Events.broadcast_to_family(family.id, :post_created, %{post: post})
-        post
-      end)
+        {:ok, post}
+      end
     end
   end
 
@@ -265,6 +284,11 @@ defmodule ShareCircle.Posts do
   end
 
   defp tap_broadcast(error, _fun), do: error
+
+  defp infer_kind(%{"kind" => kind}, _media_ids) when kind in ~w(text photo video album link), do: kind
+  defp infer_kind(_attrs, [_]), do: "photo"
+  defp infer_kind(_attrs, [_ | _]), do: "album"
+  defp infer_kind(_attrs, _), do: "text"
 
   # Cursor pagination --------------------------------------------------------
 

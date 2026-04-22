@@ -22,7 +22,10 @@ defmodule ShareCircleWeb.Plugs.AuthenticateApi do
         case Accounts.get_user_by_api_token(token) do
           %{} = user ->
             scope = %{Scope.for_user(user) | request_id: conn.assigns[:request_id]}
-            assign(conn, :current_scope, scope)
+
+            conn
+            |> assign(:current_scope, scope)
+            |> assign(:api_token, token)
 
           nil ->
             unauthorized(conn)

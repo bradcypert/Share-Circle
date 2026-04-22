@@ -29,6 +29,51 @@ defmodule ShareCircleWeb.UserAuth do
   @session_reissue_age_in_days 7
 
   @doc """
+  LiveView on_mount hooks for authentication.
+
+  Usage in router:
+      live_session :require_authenticated_user,
+        on_mount: [{ShareCircleWeb.UserAuth, :require_authenticated_user}] do
+        live "/families", FamilySetupLive, :index
+      end
+  """
+  def on_mount(:require_authenticated_user, _params, session, socket) do
+    socket = mount_current_scope(socket, session)
+
+    if socket.assigns.current_scope.user do
+      {:cont, socket}
+    else
+      {:halt, Phoenix.LiveView.redirect(socket, to: ~p"/users/log-in")}
+    end
+  end
+
+  def on_mount(:redirect_if_authenticated, _params, session, socket) do
+    socket = mount_current_scope(socket, session)
+
+    if socket.assigns.current_scope.user do
+      {:halt, Phoenix.LiveView.redirect(socket, to: signed_in_path_lv())}
+    else
+      {:cont, socket}
+    end
+  end
+
+  defp mount_current_scope(socket, session) do
+    Phoenix.Component.assign_new(socket, :current_scope, fn ->
+      user =
+        with token when is_binary(token) <- session["user_token"],
+             {user, _} <- Accounts.get_user_by_session_token(token) do
+          user
+        else
+          _ -> nil
+        end
+
+      Scope.for_user(user)
+    end)
+  end
+
+  defp signed_in_path_lv, do: ~p"/families"
+
+  @doc """
   Logs the user in.
 
   Redirects to the session's `:user_return_to` path
@@ -196,7 +241,7 @@ defmodule ShareCircleWeb.UserAuth do
     end
   end
 
-  defp signed_in_path(_conn), do: ~p"/"
+  defp signed_in_path(_conn), do: ~p"/families"
 
   @doc """
   Plug for routes that require the user to be authenticated.

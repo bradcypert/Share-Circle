@@ -5,33 +5,36 @@ defmodule ShareCircleWeb.FeedLive do
   alias ShareCircle.PubSub
 
   @impl true
-  def mount(_params, _session, socket) do
-    scope = socket.assigns.current_scope
+  def mount(%{"family_id" => family_id}, _session, socket) do
+    user = socket.assigns.current_scope.user
 
-    if connected?(socket) do
-      PubSub.subscribe(PubSub.family_topic(scope.family.id))
+    case ShareCircle.Families.get_membership_for_user(family_id, user.id) do
+      nil ->
+        {:ok, push_navigate(socket, to: ~p"/families")}
+
+      %{family: family} = membership ->
+        scope = %{socket.assigns.current_scope | family: family, membership: membership}
+
+        if connected?(socket) do
+          PubSub.subscribe(PubSub.family_topic(family.id))
+        end
+
+        {posts, pagination} = Posts.list_posts(scope)
+
+        {:ok,
+         socket
+         |> assign(:current_scope, scope)
+         |> assign(:posts, posts)
+         |> assign(:pagination, pagination)
+         |> assign(:post_body, "")}
     end
-
-    {posts, pagination} = Posts.list_posts(scope)
-
-    {:ok,
-     socket
-     |> assign(:posts, posts)
-     |> assign(:pagination, pagination)
-     |> assign(:post_body, "")
-     |> assign(:submitting, false)}
   end
 
   @impl true
   def handle_event("create_post", %{"body" => body}, socket) do
-    scope = socket.assigns.current_scope
-
-    case Posts.create_post(scope, %{"kind" => "text", "body" => body}) do
-      {:ok, _post} ->
-        {:noreply, assign(socket, :post_body, "")}
-
-      {:error, _changeset} ->
-        {:noreply, socket}
+    case Posts.create_post(socket.assigns.current_scope, %{"kind" => "text", "body" => body}) do
+      {:ok, _post} -> {:noreply, assign(socket, :post_body, "")}
+      {:error, _} -> {:noreply, socket}
     end
   end
 
