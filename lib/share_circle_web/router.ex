@@ -48,9 +48,34 @@ defmodule ShareCircleWeb.Router do
   scope "/api/v1", ShareCircleWeb.Api.V1 do
     pipe_through :api
 
-    scope "/families/:family_id" do
-      pipe_through :api_family
+    # Single-resource routes — no family_id in URL, membership checked in context
+    resources "/posts", PostController, only: [:show, :update, :delete] do
+      resources "/comments", CommentController, only: [:index, :create]
+      put "/reactions/:emoji", ReactionController, :upsert
+      delete "/reactions/:emoji", ReactionController, :delete
     end
+
+    resources "/comments", CommentController, only: [:update, :delete] do
+      put "/reactions/:emoji", ReactionController, :upsert
+      delete "/reactions/:emoji", ReactionController, :delete
+    end
+
+    scope "/families/:family_id" do
+      pipe_through [:api_family, :api_write]
+
+      resources "/posts", PostController, only: [:index, :create]
+
+      scope "/posts/:post_id" do
+        resources "/comments", CommentController, only: [:create]
+      end
+    end
+  end
+
+  # Feed LiveView — requires authenticated browser session with family context
+  scope "/", ShareCircleWeb do
+    pipe_through [:browser, :require_authenticated_user]
+
+    live "/feed", FeedLive, :index
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development

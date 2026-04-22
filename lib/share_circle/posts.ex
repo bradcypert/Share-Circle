@@ -1,0 +1,311 @@
+defmodule ShareCircle.Posts do
+  @moduledoc """
+  Posts, comments, and reactions.
+
+  Family-scoped mutations (create) require a fully loaded Scope (with family + membership).
+  Single-resource mutations (update/delete) accept a Scope with only user set — they load
+  the subject's family membership internally before calling Policy.authorize/3.
+  """
+
+  import Ecto.Query
+
+  alias ShareCircle.Accounts.Scope
+  alias ShareCircle.Events
+  alias ShareCircle.Families
+  alias ShareCircle.Families.Policy
+  alias ShareCircle.Posts.{Comment, Post, Reaction}
+  alias ShareCircle.Repo
+
+  # ---------------------------------------------------------------------------
+  # Posts
+  # ---------------------------------------------------------------------------
+
+  @doc """
+  Returns a paginated list of posts for the family in the scope.
+  Options: `limit` (default 25, max 100), `cursor` (opaque pagination cursor).
+  Returns `{posts, pagination_meta}`.
+  """
+  def list_posts(%Scope{family: family}, opts \\ []) do
+    limit = min(Keyword.get(opts, :limit, 25), 100)
+    cursor = Keyword.get(opts, :cursor)
+
+    query =
+      from p in Post,
+        where: p.family_id == ^family.id and is_nil(p.deleted_at),
+        order_by: [desc: p.inserted_at, desc: p.id],
+        limit: ^(limit + 1),
+        preload: [:author]
+
+    posts = query |> apply_cursor(cursor) |> Repo.all()
+    {items, has_more} = split_page(posts, limit)
+    {items, build_pagination(items, has_more)}
+  end
+
+  @doc "Loads a single post, verifying the current user is a member of the post's family."
+  def get_post(%Scope{user: user}, post_id) do
+    with %Post{deleted_at: nil} = post <- Repo.get_by(Post, id: post_id, deleted_at: nil),
+         true <- member?(post.family_id, user.id) do
+      {:ok, Repo.preload(post, :author)}
+    else
+      nil -> {:error, :not_found}
+      false -> {:error, :not_found}
+    end
+  end
+
+  @doc "Creates a text post. Scope must have family and membership."
+  def create_post(%Scope{user: user, family: family, membership: membership}, attrs) do
+    with :ok <- Policy.authorize(membership, :create_post) do
+      %Post{family_id: family.id, author_id: user.id}
+      |> Post.changeset(Map.put_new(attrs, "kind", "text"))
+      |> Repo.insert()
+      |> tap_broadcast(fn post ->
+        post = Repo.preload(post, :author)
+        Events.broadcast_to_family(family.id, :post_created, %{post: post})
+        post
+      end)
+    end
+  end
+
+  @doc "Updates a post. Scope needs only user — membership is fetched from the post's family."
+  def update_post(%Scope{user: user}, post_id, attrs) do
+    with {:ok, post, membership} <- load_post_with_membership(post_id, user.id),
+         :ok <- Policy.authorize(membership, :update_post, post) do
+      post
+      |> Post.update_changeset(attrs)
+      |> Repo.update()
+      |> tap_broadcast(fn updated ->
+        updated = Repo.preload(updated, :author)
+        Events.broadcast_to_family(post.family_id, :post_updated, %{post: updated})
+        updated
+      end)
+    end
+  end
+
+  @doc "Soft-deletes a post. Members can delete their own; admins/owners can delete any."
+  def delete_post(%Scope{user: user}, post_id) do
+    with {:ok, post, membership} <- load_post_with_membership(post_id, user.id),
+         :ok <- Policy.authorize(membership, :delete_post, post) do
+      post
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now())
+      |> Repo.update()
+      |> tap_broadcast(fn _ ->
+        Events.broadcast_to_family(post.family_id, :post_deleted, %{post_id: post.id})
+      end)
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Comments
+  # ---------------------------------------------------------------------------
+
+  @doc "Returns all non-deleted comments for a post, oldest first."
+  def list_comments(%Scope{user: user}, post_id) do
+    with {:ok, post} <- get_visible_post(post_id, user.id) do
+      comments =
+        from(c in Comment,
+          where: c.post_id == ^post.id and is_nil(c.deleted_at),
+          order_by: [asc: c.inserted_at],
+          preload: [:author]
+        )
+        |> Repo.all()
+
+      {:ok, comments}
+    end
+  end
+
+  @doc "Creates a comment on a post. Scope must have family and membership."
+  def create_comment(
+        %Scope{user: user, family: family, membership: membership},
+        post_id,
+        attrs
+      ) do
+    with :ok <- Policy.authorize(membership, :create_comment),
+         {:ok, post} <- get_visible_post(post_id, user.id) do
+      %Comment{family_id: family.id, post_id: post.id, author_id: user.id}
+      |> Comment.changeset(attrs)
+      |> Repo.insert()
+      |> tap_broadcast(fn comment ->
+        comment = Repo.preload(comment, :author)
+        Events.broadcast_to_family(family.id, :comment_created, %{comment: comment})
+        comment
+      end)
+    end
+  end
+
+  @doc "Updates a comment body. Only the author can update."
+  def update_comment(%Scope{user: user}, comment_id, attrs) do
+    with {:ok, comment, membership} <- load_comment_with_membership(comment_id, user.id),
+         :ok <- Policy.authorize(membership, :update_comment, comment) do
+      comment
+      |> Comment.update_changeset(attrs)
+      |> Repo.update()
+      |> tap_broadcast(fn updated ->
+        updated = Repo.preload(updated, :author)
+        Events.broadcast_to_family(comment.family_id, :comment_updated, %{comment: updated})
+        updated
+      end)
+    end
+  end
+
+  @doc "Soft-deletes a comment. Author or admin/owner."
+  def delete_comment(%Scope{user: user}, comment_id) do
+    with {:ok, comment, membership} <- load_comment_with_membership(comment_id, user.id),
+         :ok <- Policy.authorize(membership, :delete_comment, comment) do
+      comment
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now())
+      |> Repo.update()
+      |> tap_broadcast(fn _ ->
+        Events.broadcast_to_family(comment.family_id, :comment_deleted, %{
+          comment_id: comment.id
+        })
+      end)
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Reactions
+  # ---------------------------------------------------------------------------
+
+  @doc "Adds a reaction to a post or comment. Idempotent — re-reacting with the same emoji is a no-op."
+  def react(%Scope{user: user, family: family, membership: membership}, subject_type, subject_id, emoji) do
+    with :ok <- Policy.authorize(membership, :react) do
+      %Reaction{family_id: family.id, user_id: user.id}
+      |> Reaction.changeset(%{subject_type: subject_type, subject_id: subject_id, emoji: emoji})
+      |> Repo.insert(on_conflict: :nothing)
+      |> case do
+        {:ok, %Reaction{id: nil}} ->
+          :ok
+
+        {:ok, reaction} ->
+          Events.broadcast_to_family(family.id, :reaction_added, %{reaction: reaction})
+          :ok
+
+        {:error, _} = err ->
+          err
+      end
+    end
+  end
+
+  @doc "Removes a reaction. Scope must have family and membership."
+  def unreact(
+        %Scope{user: user, family: family, membership: membership},
+        subject_type,
+        subject_id,
+        emoji
+      ) do
+    with :ok <- Policy.authorize(membership, :react) do
+      case Repo.get_by(Reaction,
+             user_id: user.id,
+             subject_type: subject_type,
+             subject_id: subject_id,
+             emoji: emoji
+           ) do
+        nil ->
+          {:error, :not_found}
+
+        reaction ->
+          {:ok, _} = Repo.delete(reaction)
+
+          Events.broadcast_to_family(family.id, :reaction_removed, %{
+            user_id: user.id,
+            subject_type: subject_type,
+            subject_id: subject_id,
+            emoji: emoji
+          })
+
+          :ok
+      end
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Private
+  # ---------------------------------------------------------------------------
+
+  defp member?(family_id, user_id) do
+    not is_nil(Families.get_membership_for_user(family_id, user_id))
+  end
+
+  defp get_visible_post(post_id, user_id) do
+    case Repo.get_by(Post, id: post_id, deleted_at: nil) do
+      nil -> {:error, :not_found}
+      post -> if member?(post.family_id, user_id), do: {:ok, post}, else: {:error, :not_found}
+    end
+  end
+
+  defp load_post_with_membership(post_id, user_id) do
+    case Repo.get_by(Post, id: post_id, deleted_at: nil) do
+      nil ->
+        {:error, :not_found}
+
+      post ->
+        case Families.get_membership_for_user(post.family_id, user_id) do
+          nil -> {:error, :not_found}
+          membership -> {:ok, post, membership}
+        end
+    end
+  end
+
+  defp load_comment_with_membership(comment_id, user_id) do
+    case Repo.get_by(Comment, id: comment_id, deleted_at: nil) do
+      nil ->
+        {:error, :not_found}
+
+      comment ->
+        case Families.get_membership_for_user(comment.family_id, user_id) do
+          nil -> {:error, :not_found}
+          membership -> {:ok, comment, membership}
+        end
+    end
+  end
+
+  defp tap_broadcast({:ok, result}, fun) do
+    fun.(result)
+    {:ok, result}
+  end
+
+  defp tap_broadcast(error, _fun), do: error
+
+  # Cursor pagination --------------------------------------------------------
+
+  defp apply_cursor(query, nil), do: query
+
+  defp apply_cursor(query, cursor) do
+    case decode_cursor(cursor) do
+      {:ok, {ts, id}} ->
+        from p in query,
+          where: p.inserted_at < ^ts or (p.inserted_at == ^ts and p.id < ^id)
+
+      :error ->
+        query
+    end
+  end
+
+  defp decode_cursor(cursor) do
+    try do
+      with {:ok, bin} <- Base.url_decode64(cursor, padding: false),
+           {ts_us, id} when is_integer(ts_us) and is_binary(id) <-
+             :erlang.binary_to_term(bin, [:safe]) do
+        {:ok, {DateTime.from_unix!(ts_us, :microsecond), id}}
+      else
+        _ -> :error
+      end
+    rescue
+      _ -> :error
+    end
+  end
+
+  defp encode_cursor(%Post{inserted_at: ts, id: id}) do
+    {DateTime.to_unix(ts, :microsecond), id}
+    |> :erlang.term_to_binary()
+    |> Base.url_encode64(padding: false)
+  end
+
+  defp split_page(items, limit) when length(items) > limit, do: {Enum.take(items, limit), true}
+  defp split_page(items, _limit), do: {items, false}
+
+  defp build_pagination([], _has_more), do: %{cursor: nil, has_more: false}
+
+  defp build_pagination(items, has_more),
+    do: %{cursor: encode_cursor(List.last(items)), has_more: has_more}
+end

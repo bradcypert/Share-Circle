@@ -13,9 +13,14 @@ defmodule ShareCircle.Events do
 
   alias ShareCircle.PubSub
 
-  @doc "Broadcasts a family-scoped event to all subscribers of the family topic."
+  @doc "Broadcasts a family-scoped event. Accepts a scope struct or a raw family_id string."
   def broadcast_to_family(%{family: %{id: family_id}}, event, payload)
       when is_atom(event) do
+    PubSub.broadcast(PubSub.family_topic(family_id), event, payload)
+  end
+
+  def broadcast_to_family(family_id, event, payload)
+      when is_binary(family_id) and is_atom(event) do
     PubSub.broadcast(PubSub.family_topic(family_id), event, payload)
   end
 
