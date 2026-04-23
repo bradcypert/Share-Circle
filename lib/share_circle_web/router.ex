@@ -101,6 +101,14 @@ defmodule ShareCircleWeb.Router do
       delete "/reactions/:emoji", ReactionController, :delete
     end
 
+    # Conversation + message routes (membership checked in context)
+    get "/conversations/:id", ConversationController, :show
+    get "/conversations/:conversation_id/messages", MessageController, :index
+    post "/conversations/:conversation_id/messages", MessageController, :create
+    patch "/messages/:id", MessageController, :update
+    delete "/messages/:id", MessageController, :delete
+    post "/conversations/:conversation_id/read", MessageController, :mark_read
+
     # Family-scoped routes (LoadCurrentFamily required)
     scope "/families/:family_id" do
       pipe_through :api_family
@@ -108,6 +116,7 @@ defmodule ShareCircleWeb.Router do
       get "/", FamilyController, :show
       get "/members", MemberController, :index
       get "/invitations", InvitationController, :index
+      get "/conversations", ConversationController, :index
 
       scope "/" do
         pipe_through :api_write
@@ -127,6 +136,9 @@ defmodule ShareCircleWeb.Router do
 
         # Initiate upload — family context required
         post "/uploads/init", UploadController, :init_upload
+
+        # Create conversation
+        post "/conversations", ConversationController, :create
       end
     end
   end
@@ -144,6 +156,8 @@ defmodule ShareCircleWeb.Router do
       on_mount: [{ShareCircleWeb.UserAuth, :require_authenticated_user}] do
       live "/families", FamilySetupLive, :index
       live "/families/:family_id/feed", FeedLive, :index
+      live "/families/:family_id/chat", ChatLive, :index
+      live "/families/:family_id/chat/:conversation_id", ChatLive, :show
     end
   end
 

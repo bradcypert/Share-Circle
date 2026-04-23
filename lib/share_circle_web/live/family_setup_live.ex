@@ -6,6 +6,7 @@ defmodule ShareCircleWeb.FamilySetupLive do
 
   use ShareCircleWeb, :live_view
 
+  alias ShareCircle.Chat
   alias ShareCircle.Families
 
   @impl true
@@ -28,6 +29,7 @@ defmodule ShareCircleWeb.FamilySetupLive do
   def handle_event("create_family", %{"family" => params}, socket) do
     case Families.create_family(socket.assigns.current_scope, params) do
       {:ok, {family, _membership}} ->
+        Chat.ensure_family_conversation(family.id)
         {:noreply, push_navigate(socket, to: ~p"/families/#{family.id}/feed")}
 
       {:error, changeset} ->

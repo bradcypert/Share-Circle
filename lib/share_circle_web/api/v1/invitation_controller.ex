@@ -1,6 +1,7 @@
 defmodule ShareCircleWeb.Api.V1.InvitationController do
   use ShareCircleWeb, :controller
 
+  alias ShareCircle.Chat
   alias ShareCircle.Families
   alias ShareCircleWeb.Api.V1.{InvitationJSON, MemberJSON, Response}
 
@@ -31,6 +32,15 @@ defmodule ShareCircleWeb.Api.V1.InvitationController do
   # POST /api/v1/invitations/:token/accept
   def accept(conn, %{"token" => token}) do
     with {:ok, membership} <- Families.accept_invitation(token, conn.assigns.current_scope) do
+      # Add the new member to the family-wide conversation
+      case Chat.ensure_family_conversation(membership.family_id) do
+        {:ok, conv} ->
+          Chat.add_member_to_conversation(conv.id, membership.user_id, membership.family_id)
+
+        _ ->
+          :ok
+      end
+
       conn
       |> put_status(:created)
       |> Response.render_data(MemberJSON.render(membership))

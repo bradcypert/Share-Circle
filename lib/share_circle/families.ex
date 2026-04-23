@@ -148,6 +148,13 @@ defmodule ShareCircle.Families do
   # Helpers for loading scope
   # ---------------------------------------------------------------------------
 
+  @doc "Returns all memberships for a given family_id (raw, no scope needed)."
+  def list_memberships_for_family(family_id) do
+    Membership
+    |> where(family_id: ^family_id)
+    |> Repo.all()
+  end
+
   @doc "Returns all memberships (with family preloaded) for the given user."
   def list_families_for_user(%Scope{user: %{id: user_id}}) do
     Membership

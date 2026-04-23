@@ -2,6 +2,7 @@ defmodule ShareCircleWeb.UserSocket do
   use Phoenix.Socket
 
   channel "family:*", ShareCircleWeb.FamilyChannel
+  channel "conversation:*", ShareCircleWeb.ConversationChannel
 
   @impl true
   def connect(%{"token" => token}, socket, _connect_info) do

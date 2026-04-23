@@ -1,0 +1,88 @@
+<div class="flex h-[calc(100vh-4rem)]">
+  <%!-- Sidebar: conversation list --%>
+  <aside class="w-64 border-r border-base-300 flex flex-col overflow-hidden">
+    <div class="p-4 border-b border-base-300">
+      <h2 class="font-semibold text-base-content">Messages</h2>
+    </div>
+    <div class="flex-1 overflow-y-auto">
+      <%= for conv <- @conversations do %>
+        <button
+          phx-click="select_conversation"
+          phx-value-id={conv.id}
+          class={[
+            "w-full text-left px-4 py-3 hover:bg-base-200 transition-colors",
+            if(@active_conv && @active_conv.id == conv.id, do: "bg-base-200", else: "")
+          ]}
+        >
+          <p class="text-sm font-medium text-base-content truncate">
+            {conversation_display_name(conv)}
+          </p>
+          <%= if conv.last_message_preview do %>
+            <p class="text-xs text-base-content/60 truncate mt-0.5">
+              {conv.last_message_preview}
+            </p>
+          <% end %>
+        </button>
+      <% end %>
+    </div>
+  </aside>
+
+  <%!-- Main chat area --%>
+  <div class="flex-1 flex flex-col overflow-hidden">
+    <%= if @active_conv do %>
+      <%!-- Header --%>
+      <div class="px-4 py-3 border-b border-base-300 flex items-center gap-3">
+        <h2 class="font-semibold text-base-content">
+          {conversation_display_name(@active_conv)}
+        </h2>
+        <span class="text-xs text-base-content/50">
+          {@active_conv.members |> length()} members
+        </span>
+      </div>
+
+      <%!-- Messages --%>
+      <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-3" id="messages">
+        <%= for msg <- @messages do %>
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+              <span class="text-xs font-bold text-primary">
+                {String.first(msg.author.display_name)}
+              </span>
+            </div>
+            <div>
+              <div class="flex items-baseline gap-2">
+                <span class="text-sm font-medium text-base-content">{msg.author.display_name}</span>
+                <span class="text-xs text-base-content/40">
+                  {Calendar.strftime(msg.inserted_at, "%I:%M %p")}
+                </span>
+              </div>
+              <p class="text-sm text-base-content/80 mt-0.5">{msg.body}</p>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <%!-- Typing indicator --%>
+      <%= if @typing_users != [] do %>
+        <p class="px-4 text-xs text-base-content/50 italic">Someone is typing...</p>
+      <% end %>
+
+      <%!-- Message input --%>
+      <div class="p-4 border-t border-base-300">
+        <.form for={@message_form} phx-submit="send_message" class="flex gap-2">
+          <.input
+            field={@message_form[:body]}
+            placeholder="Type a message..."
+            class="flex-1"
+            autocomplete="off"
+          />
+          <.button type="submit">Send</.button>
+        </.form>
+      </div>
+    <% else %>
+      <div class="flex-1 flex items-center justify-center text-base-content/40">
+        Select a conversation
+      </div>
+    <% end %>
+  </div>
+</div>
