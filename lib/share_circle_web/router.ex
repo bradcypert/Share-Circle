@@ -101,6 +101,13 @@ defmodule ShareCircleWeb.Router do
       delete "/reactions/:emoji", ReactionController, :delete
     end
 
+    # Event routes (membership checked in context)
+    get "/events/:id", EventController, :show
+    patch "/events/:id", EventController, :update
+    delete "/events/:id", EventController, :delete
+    get "/events/:event_id/rsvp", RsvpController, :show
+    put "/events/:event_id/rsvp", RsvpController, :upsert
+
     # Conversation + message routes (membership checked in context)
     get "/conversations/:id", ConversationController, :show
     get "/conversations/:conversation_id/messages", MessageController, :index
@@ -117,6 +124,7 @@ defmodule ShareCircleWeb.Router do
       get "/members", MemberController, :index
       get "/invitations", InvitationController, :index
       get "/conversations", ConversationController, :index
+      get "/events", EventController, :index
 
       scope "/" do
         pipe_through :api_write
@@ -139,6 +147,9 @@ defmodule ShareCircleWeb.Router do
 
         # Create conversation
         post "/conversations", ConversationController, :create
+
+        # Create event
+        post "/events", EventController, :create
       end
     end
   end
@@ -158,6 +169,7 @@ defmodule ShareCircleWeb.Router do
       live "/families/:family_id/feed", FeedLive, :index
       live "/families/:family_id/chat", ChatLive, :index
       live "/families/:family_id/chat/:conversation_id", ChatLive, :show
+      live "/families/:family_id/events", EventsLive, :index
     end
   end
 

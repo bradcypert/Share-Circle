@@ -30,6 +30,8 @@ defmodule ShareCircle.Families.Policy do
 
   def authorize(%Membership{role: "admin"}, :delete_post, _subject), do: :ok
   def authorize(%Membership{role: "admin"}, :delete_comment, _subject), do: :ok
+  def authorize(%Membership{role: "admin"}, :update_event, _subject), do: :ok
+  def authorize(%Membership{role: "admin"}, :delete_event, _subject), do: :ok
 
   # Member permissions — can mutate their own content
   def authorize(%Membership{role: "member"}, action, _subject)
@@ -46,6 +48,12 @@ defmodule ShareCircle.Families.Policy do
     do: :ok
 
   def authorize(%Membership{role: "member", user_id: uid}, :delete_comment, %{author_id: uid}),
+    do: :ok
+
+  def authorize(%Membership{role: "member", user_id: uid}, :update_event, %{author_id: uid}),
+    do: :ok
+
+  def authorize(%Membership{role: "member", user_id: uid}, :delete_event, %{author_id: uid}),
     do: :ok
 
   # Limited — read only, no mutations
