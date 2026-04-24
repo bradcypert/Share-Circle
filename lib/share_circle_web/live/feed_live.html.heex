@@ -1,7 +1,10 @@
 <.app_shell current_scope={@current_scope} active_tab="feed">
   <div class="max-w-2xl mx-auto px-4 py-8 space-y-6">
     <%!-- Post composer --%>
-    <div class="bg-base-100 border border-base-300 rounded-lg p-4 space-y-3">
+    <div
+      class="bg-base-100 border border-base-300 rounded-lg p-4 space-y-3"
+      phx-drop-target={@uploads.media.ref}
+    >
       <div class="flex items-start gap-3">
         <div class="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
           <span class="text-xs font-semibold text-primary">
@@ -16,11 +19,59 @@
           class="flex-1 bg-transparent text-sm text-base-content placeholder-base-content/35 resize-none focus:outline-none leading-relaxed"
         ></textarea>
       </div>
-      <div class="flex justify-end border-t border-base-300 pt-3">
+
+      <%!-- Upload previews --%>
+      <%= if @uploads.media.entries != [] do %>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+          <%= for entry <- @uploads.media.entries do %>
+            <div class="relative rounded-lg overflow-hidden bg-base-200 aspect-square group">
+              <.live_img_preview entry={entry} class="w-full h-full object-cover" />
+              <%!-- Progress overlay --%>
+              <%= if entry.progress < 100 do %>
+                <div class="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <p class="text-white text-xs font-medium">{entry.progress}%</p>
+                </div>
+              <% end %>
+              <%!-- Cancel button --%>
+              <button
+                type="button"
+                phx-click="cancel_upload"
+                phx-value-ref={entry.ref}
+                class="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <.icon name="hero-x-mark" class="size-3" />
+              </button>
+              <%!-- Per-entry errors --%>
+              <%= for err <- upload_errors(@uploads.media, entry) do %>
+                <div class="absolute inset-x-0 bottom-0 bg-error/90 px-1 py-0.5">
+                  <p class="text-error-content text-[10px] text-center">{upload_error_to_string(err)}</p>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+
+      <%!-- Whole-upload errors (too many files, etc.) --%>
+      <%= for err <- upload_errors(@uploads.media) do %>
+        <p class="text-xs text-error">{upload_error_to_string(err)}</p>
+      <% end %>
+
+      <div class="flex items-center justify-between border-t border-base-300 pt-3">
+        <div class="flex items-center gap-1">
+          <.live_file_input upload={@uploads.media} class="sr-only" />
+          <label
+            for={@uploads.media.ref}
+            class="cursor-pointer flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs text-base-content/50 hover:bg-base-200 hover:text-base-content transition-colors"
+            title="Attach photos or videos"
+          >
+            <.icon name="hero-paper-clip" class="size-4" />
+            <span class="hidden sm:inline">Photo/Video</span>
+          </label>
+        </div>
         <button
           phx-click="create_post"
-          phx-value-body={@post_body}
-          disabled={String.trim(@post_body) == ""}
+          disabled={String.trim(@post_body) == "" && @uploads.media.entries == []}
           class="btn btn-primary btn-sm rounded-md px-4 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Share
@@ -110,7 +161,48 @@
                 </div>
               </div>
             <% else %>
-              <p class="text-sm text-base-content/85 whitespace-pre-wrap leading-relaxed">{post.body}</p>
+              <%= if post.body && post.body != "" do %>
+                <p class="text-sm text-base-content/85 whitespace-pre-wrap leading-relaxed">{post.body}</p>
+              <% end %>
+            <% end %>
+
+            <%!-- Media attachments --%>
+            <%= if post.post_media != [] do %>
+              <% media_count = length(post.post_media) %>
+              <div class={[
+                "rounded-lg overflow-hidden",
+                if(media_count == 1, do: "", else: "grid grid-cols-2 gap-0.5")
+              ]}>
+                <%= for pm <- post.post_media do %>
+                  <% url = Map.get(@media_urls, pm.media_item.id) %>
+                  <div class={[
+                    "relative bg-base-200",
+                    if(media_count == 1, do: "max-h-96", else: "aspect-square")
+                  ]}>
+                    <%= if url do %>
+                      <img
+                        src={url}
+                        class={[
+                          "w-full object-cover",
+                          if(media_count == 1, do: "max-h-96", else: "h-full absolute inset-0")
+                        ]}
+                        alt=""
+                      />
+                      <%= if pm.media_item.kind == "video" do %>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                          <div class="w-12 h-12 rounded-full bg-black/50 flex items-center justify-center backdrop-blur-sm">
+                            <.icon name="hero-play-solid" class="size-5 text-white ml-0.5" />
+                          </div>
+                        </div>
+                      <% end %>
+                    <% else %>
+                      <div class="w-full h-32 flex items-center justify-center">
+                        <p class="text-xs text-base-content/40">Processing…</p>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
             <% end %>
           </div>
 
@@ -233,6 +325,17 @@
         <div class="text-center py-20 text-base-content/30">
           <p class="text-sm">Nothing here yet.</p>
           <p class="text-xs mt-1">Be the first to share something with your family.</p>
+        </div>
+      <% end %>
+
+      <%= if @pagination.has_more do %>
+        <div class="flex justify-center pt-2">
+          <button
+            phx-click="load_more"
+            class="btn btn-ghost btn-sm rounded-md text-base-content/50 hover:text-base-content"
+          >
+            Load more
+          </button>
         </div>
       <% end %>
     </div>

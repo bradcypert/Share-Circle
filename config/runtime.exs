@@ -102,6 +102,15 @@ if config_env() == :prod do
   end
 
   # -------------------------------------------------------------------------
+  # Web push (optional)
+  # -------------------------------------------------------------------------
+  # Set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY to enable browser push.
+  # Generate a key pair with: npx web-push generate-vapid-keys
+  config :share_circle,
+    vapid_public_key: System.get_env("VAPID_PUBLIC_KEY"),
+    vapid_private_key: System.get_env("VAPID_PRIVATE_KEY")
+
+  # -------------------------------------------------------------------------
   # Billing adapter
   # -------------------------------------------------------------------------
   # BILLING_ADAPTER=noop   — no-op (default for self-hosted)

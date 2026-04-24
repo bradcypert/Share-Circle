@@ -154,7 +154,17 @@
         </div>
 
         <%!-- Messages --%>
-        <div class="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4" id="messages">
+        <div class="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4" id="messages" phx-hook="ScrollBottom">
+          <%= if @message_pagination.next_cursor do %>
+            <div class="flex justify-center">
+              <button
+                phx-click="load_older"
+                class="btn btn-ghost btn-xs rounded-md text-base-content/40 hover:text-base-content"
+              >
+                Load older messages
+              </button>
+            </div>
+          <% end %>
           <%= for msg <- @messages do %>
             <% _is_mine = msg.author.id == @current_scope.user.id %>
             <% is_editing = @editing_message_id == msg.id %>
@@ -235,6 +245,8 @@
               value={Phoenix.HTML.Form.input_value(@message_form, :body)}
               placeholder="Write a message…"
               autocomplete="off"
+              phx-keyup="typing"
+              phx-debounce="500"
               class="flex-1 bg-base-200 border border-base-300 rounded-lg px-4 py-2 text-sm text-base-content placeholder-base-content/35 focus:outline-none focus:border-base-content/30 transition-colors"
             />
             <button

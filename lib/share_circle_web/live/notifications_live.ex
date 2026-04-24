@@ -14,15 +14,31 @@ defmodule ShareCircleWeb.NotificationsLive do
 
     notifications = Notifications.list_notifications(scope)
     unread = Notifications.unread_count(scope)
+    vapid_public_key = Application.get_env(:share_circle, :vapid_public_key)
 
     {:ok,
      socket
      |> assign(:notifications, notifications)
      |> assign(:unread_count, unread)
-     |> assign(:back_family_id, params["family_id"])}
+     |> assign(:back_family_id, params["family_id"])
+     |> assign(:vapid_public_key, vapid_public_key)
+     |> assign(:push_subscribed, false)}
   end
 
   @impl true
+  def handle_event("push_subscribed", %{"endpoint" => endpoint, "p256dh_key" => p256dh, "auth_key" => auth}, socket) do
+    attrs = %{"endpoint" => endpoint, "p256dh_key" => p256dh, "auth_key" => auth}
+
+    case ShareCircle.Notifications.register_push_subscription(socket.assigns.current_scope, attrs) do
+      {:ok, _sub} -> {:noreply, assign(socket, :push_subscribed, true)}
+      {:error, _} -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("push_already_subscribed", _params, socket) do
+    {:noreply, assign(socket, :push_subscribed, true)}
+  end
+
   def handle_event("mark_read", %{"id" => id}, socket) do
     scope = socket.assigns.current_scope
 

@@ -21,11 +21,35 @@
         <% end %>
       </h1>
     </div>
-    <div>
+    <div class="flex items-center gap-3">
       <%= if @unread_count > 0 do %>
         <button phx-click="mark_all_read" class="text-xs text-base-content/45 hover:text-base-content transition-colors">
           Mark all read
         </button>
+      <% end %>
+      <%!-- Push notification opt-in --%>
+      <%= if @vapid_public_key do %>
+        <div
+          id="push-notifications"
+          phx-hook="PushNotifications"
+          data-vapid-key={@vapid_public_key}
+        >
+          <%= if @push_subscribed do %>
+            <span class="text-xs text-base-content/40 flex items-center gap-1">
+              <.icon name="hero-bell-solid" class="size-3.5 text-primary" />
+              Push on
+            </span>
+          <% else %>
+            <button
+              type="button"
+              data-push-subscribe
+              class="text-xs text-base-content/45 hover:text-base-content transition-colors flex items-center gap-1"
+            >
+              <.icon name="hero-bell" class="size-3.5" />
+              Enable push
+            </button>
+          <% end %>
+        </div>
       <% end %>
     </div>
   </header>

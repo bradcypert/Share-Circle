@@ -25,11 +25,102 @@ import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/share_circle"
 import topbar from "../vendor/topbar"
 
+// Manages browser push notification subscription.
+// Attach with phx-hook="PushNotifications" data-vapid-key="<base64url key>".
+const PushNotifications = {
+  async mounted() {
+    const vapidKey = this.el.dataset.vapidKey
+    if (!vapidKey || !("serviceWorker" in navigator) || !("PushManager" in window)) return
+
+    // Check existing subscription and notify LiveView
+    try {
+      const reg = await navigator.serviceWorker.ready
+      const existing = await reg.pushManager.getSubscription()
+      if (existing) this.pushEvent("push_already_subscribed", {})
+    } catch (_) {}
+
+    // Wire the subscribe button (present only when not yet subscribed)
+    const btn = this.el.querySelector("[data-push-subscribe]")
+    if (btn) btn.addEventListener("click", () => this._subscribe(vapidKey))
+  },
+
+  updated() {
+    // Re-wire after LiveView re-renders (button may have re-appeared)
+    const vapidKey = this.el.dataset.vapidKey
+    const btn = this.el.querySelector("[data-push-subscribe]")
+    if (btn && vapidKey) btn.addEventListener("click", () => this._subscribe(vapidKey))
+  },
+
+  async _subscribe(vapidKey) {
+    try {
+      const permission = await Notification.requestPermission()
+      if (permission !== "granted") return
+
+      const reg = await navigator.serviceWorker.ready
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey)
+      })
+      const json = sub.toJSON()
+      this.pushEvent("push_subscribed", {
+        endpoint: json.endpoint,
+        p256dh_key: json.keys.p256dh,
+        auth_key: json.keys.auth
+      })
+    } catch (err) {
+      console.error("Push subscribe failed:", err)
+    }
+  }
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - base64String.length % 4) % 4)
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/")
+  const raw = window.atob(base64)
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)))
+}
+
+// Scrolls a container to the bottom on mount and whenever new content is added.
+// Attach with phx-hook="ScrollBottom" on the scrollable container.
+const ScrollBottom = {
+  mounted() { this.scrollToBottom() },
+  updated() {
+    // Only scroll if already near the bottom (within 200px) to avoid
+    // hijacking scroll position when the user is reading older messages.
+    const el = this.el
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 200
+    if (nearBottom) this.scrollToBottom()
+  },
+  scrollToBottom() {
+    this.el.scrollTop = this.el.scrollHeight
+  }
+}
+
+// External uploader: PUTs directly to a presigned URL (local-blob or S3)
+const Uploaders = {
+  PresignedPut: function(entries, onViewError) {
+    entries.forEach(entry => {
+      const {url, headers} = entry.meta
+      const xhr = new XMLHttpRequest()
+      onViewError(() => xhr.abort())
+      xhr.onload = () => (xhr.status >= 200 && xhr.status < 300) ? entry.progress(100) : entry.error()
+      xhr.onerror = () => entry.error()
+      xhr.upload.addEventListener("progress", e => {
+        if (e.lengthComputable) entry.progress(Math.round((e.loaded / e.total) * 100))
+      })
+      xhr.open("PUT", url, true)
+      if (headers) Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v))
+      xhr.send(entry.file)
+    })
+  }
+}
+
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks},
+  hooks: {...colocatedHooks, ScrollBottom, PushNotifications},
+  uploaders: Uploaders,
 })
 
 // Show progress bar on live navigation and form submits

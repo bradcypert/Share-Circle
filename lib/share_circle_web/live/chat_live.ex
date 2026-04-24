@@ -19,12 +19,12 @@ defmodule ShareCircleWeb.ChatLive do
 
         conversation_id = params["conversation_id"]
 
-        {active_conv, messages} =
+        {active_conv, messages, msg_pagination} =
           case conversation_id do
             nil ->
               case conversations do
                 [first | _] -> load_conversation(scope, first.id)
-                [] -> {nil, []}
+                [] -> {nil, [], %{next_cursor: nil}}
               end
 
             id ->
@@ -47,6 +47,7 @@ defmodule ShareCircleWeb.ChatLive do
          |> assign(:conversations, conversations)
          |> assign(:active_conv, active_conv)
          |> assign(:messages, messages)
+         |> assign(:message_pagination, msg_pagination)
          |> assign(:message_form, to_form(%{"body" => ""}, as: "message"))
          |> assign(:typing_users, [])
          |> assign(:family_members, family_members)
@@ -56,7 +57,8 @@ defmodule ShareCircleWeb.ChatLive do
          |> assign(:new_conv_member_ids, [])
          |> assign(:editing_message_id, nil)
          |> assign(:editing_message_body, "")
-         |> assign(:show_sidebar, false)}
+         |> assign(:show_sidebar, false)
+         |> assign(:typing_timer, nil)}
     end
   end
 
@@ -72,7 +74,7 @@ defmodule ShareCircleWeb.ChatLive do
         PubSub.subscribe(PubSub.conversation_topic(socket.assigns.active_conv.id))
       end
 
-      {conv, messages} = load_conversation(scope, conv_id)
+      {conv, messages, msg_pagination} = load_conversation(scope, conv_id)
 
       if conv do
         PubSub.subscribe(PubSub.conversation_topic(conv.id))
@@ -82,6 +84,7 @@ defmodule ShareCircleWeb.ChatLive do
        socket
        |> assign(:active_conv, conv)
        |> assign(:messages, messages)
+       |> assign(:message_pagination, msg_pagination)
        |> assign(:typing_users, [])}
     end
   end
@@ -189,13 +192,51 @@ defmodule ShareCircleWeb.ChatLive do
     scope = socket.assigns.current_scope
     conv = socket.assigns.active_conv
 
+    # Cancel any pending stop-typing timer and broadcast stopped immediately
+    if socket.assigns.typing_timer, do: Process.cancel_timer(socket.assigns.typing_timer)
+    if conv, do: Chat.broadcast_typing_stopped(scope, conv.id)
+
     case Chat.send_message(scope, conv.id, %{"body" => body}) do
       {:ok, _message} ->
-        {:noreply, assign(socket, :message_form, to_form(%{"body" => ""}, as: "message"))}
+        {:noreply,
+         socket
+         |> assign(:message_form, to_form(%{"body" => ""}, as: "message"))
+         |> assign(:typing_timer, nil)}
 
       {:error, _} ->
         {:noreply, socket}
     end
+  end
+
+  def handle_event("typing", _params, socket) do
+    scope = socket.assigns.current_scope
+    conv = socket.assigns.active_conv
+
+    if conv do
+      Chat.broadcast_typing(scope, conv.id)
+
+      # Cancel the previous debounce timer and start a new one
+      if socket.assigns.typing_timer, do: Process.cancel_timer(socket.assigns.typing_timer)
+      timer = Process.send_after(self(), :stop_typing, 3_000)
+
+      {:noreply, assign(socket, :typing_timer, timer)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("load_older", _params, socket) do
+    scope = socket.assigns.current_scope
+    conv = socket.assigns.active_conv
+    cursor = socket.assigns.message_pagination.next_cursor
+
+    {:ok, {older_messages, pagination}} =
+      Chat.list_messages(scope, conv.id, cursor: cursor)
+
+    {:noreply,
+     socket
+     |> update(:messages, &(Enum.reverse(older_messages) ++ &1))
+     |> assign(:message_pagination, pagination)}
   end
 
   def handle_event("select_conversation", %{"id" => conv_id}, socket) do
@@ -234,6 +275,13 @@ defmodule ShareCircleWeb.ChatLive do
     {:noreply, assign(socket, :typing_users, typing)}
   end
 
+  def handle_info(:stop_typing, socket) do
+    scope = socket.assigns.current_scope
+    conv = socket.assigns.active_conv
+    if conv, do: Chat.broadcast_typing_stopped(scope, conv.id)
+    {:noreply, assign(socket, :typing_timer, nil)}
+  end
+
   def handle_info(_, socket), do: {:noreply, socket}
 
   defp conversation_display_name(%{kind: "family"}), do: "Family Chat"
@@ -247,12 +295,12 @@ defmodule ShareCircleWeb.ChatLive do
   defp load_conversation(scope, conv_id) do
     case Chat.get_conversation(scope, conv_id) do
       {:ok, conv} ->
-        {:ok, {messages, _pagination}} = Chat.list_messages(scope, conv.id)
+        {:ok, {messages, pagination}} = Chat.list_messages(scope, conv.id)
         # Messages come back newest-first; reverse for display
-        {conv, Enum.reverse(messages)}
+        {conv, Enum.reverse(messages), pagination}
 
       {:error, _} ->
-        {nil, []}
+        {nil, [], %{next_cursor: nil}}
     end
   end
 end

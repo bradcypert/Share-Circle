@@ -64,10 +64,61 @@
                   <span class="text-xs text-base-content/30">· edited</span>
                 <% end %>
               </div>
-              <p class="text-sm text-base-content/85 whitespace-pre-wrap leading-relaxed">{post.body}</p>
+              <%= if post.body && post.body != "" do %>
+                <p class="text-sm text-base-content/85 whitespace-pre-wrap leading-relaxed">{post.body}</p>
+              <% end %>
+              <%!-- Media attachments --%>
+              <%= if post.post_media != [] do %>
+                <% media_count = length(post.post_media) %>
+                <div class={[
+                  "rounded-lg overflow-hidden mt-3",
+                  if(media_count == 1, do: "", else: "grid grid-cols-2 gap-0.5")
+                ]}>
+                  <%= for pm <- post.post_media do %>
+                    <% url = Map.get(@media_urls, pm.media_item.id) %>
+                    <div class={[
+                      "relative bg-base-200",
+                      if(media_count == 1, do: "max-h-72", else: "aspect-square")
+                    ]}>
+                      <%= if url do %>
+                        <img
+                          src={url}
+                          class={[
+                            "w-full object-cover",
+                            if(media_count == 1, do: "max-h-72", else: "h-full absolute inset-0")
+                          ]}
+                          alt=""
+                        />
+                        <%= if pm.media_item.kind == "video" do %>
+                          <div class="absolute inset-0 flex items-center justify-center">
+                            <div class="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
+                              <.icon name="hero-play-solid" class="size-4 text-white ml-0.5" />
+                            </div>
+                          </div>
+                        <% end %>
+                      <% else %>
+                        <div class="w-full h-28 flex items-center justify-center">
+                          <p class="text-xs text-base-content/40">Processing…</p>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
             </article>
           <% end %>
         </div>
+
+        <%= if @pagination.has_more do %>
+          <div class="flex justify-center pt-2">
+            <button
+              phx-click="load_more"
+              class="btn btn-ghost btn-sm rounded-md text-base-content/50 hover:text-base-content"
+            >
+              Load more
+            </button>
+          </div>
+        <% end %>
       <% end %>
     </div>
   </div>

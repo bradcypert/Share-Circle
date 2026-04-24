@@ -315,6 +315,16 @@ defmodule ShareCircle.Chat do
 
   defp build_pagination(_items, false), do: %{next_cursor: nil}
 
+  @doc "Broadcasts a typing-started event to other conversation members."
+  def broadcast_typing(%Scope{user: user}, conversation_id) do
+    Events.broadcast_to_conversation(conversation_id, :typing_started, %{user_id: user.id})
+  end
+
+  @doc "Broadcasts a typing-stopped event to other conversation members."
+  def broadcast_typing_stopped(%Scope{user: user}, conversation_id) do
+    Events.broadcast_to_conversation(conversation_id, :typing_stopped, %{user_id: user.id})
+  end
+
   defp notify_conversation_members(conv, actor_user_id, family_id, message) do
     from(cm in ConversationMember,
       where: cm.conversation_id == ^conv.id and is_nil(cm.left_at) and cm.user_id != ^actor_user_id

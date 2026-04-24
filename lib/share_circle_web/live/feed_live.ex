@@ -1,6 +1,7 @@
 defmodule ShareCircleWeb.FeedLive do
   use ShareCircleWeb, :live_view
 
+  alias ShareCircle.Media
   alias ShareCircle.Posts
   alias ShareCircle.PubSub
 
@@ -23,6 +24,7 @@ defmodule ShareCircleWeb.FeedLive do
         post_ids = Enum.map(posts, & &1.id)
         comment_counts = Posts.count_comments_by_post(scope, post_ids)
         post_reactions = Posts.list_reactions_for_posts(scope, post_ids)
+        media_urls = build_media_urls(scope, posts)
 
         {:ok,
          socket
@@ -32,20 +34,64 @@ defmodule ShareCircleWeb.FeedLive do
          |> assign(:post_body, "")
          |> assign(:comment_counts, comment_counts)
          |> assign(:post_reactions, post_reactions)
+         |> assign(:media_urls, media_urls)
          |> assign(:expanded_post_id, nil)
          |> assign(:expanded_comments, [])
          |> assign(:comment_body, "")
          |> assign(:editing_post_id, nil)
-         |> assign(:editing_body, "")}
+         |> assign(:editing_body, "")
+         |> allow_upload(:media,
+           accept: ~w(.jpg .jpeg .png .gif .webp .heic .heif .mp4 .mov .webm .avi),
+           max_entries: 4,
+           max_file_size: 100_000_000,
+           external: &presign_upload/2
+         )}
     end
   end
 
   @impl true
-  def handle_event("create_post", %{"body" => body}, socket) do
-    case Posts.create_post(socket.assigns.current_scope, %{"kind" => "text", "body" => body}) do
+  def handle_event("load_more", _params, socket) do
+    scope = socket.assigns.current_scope
+    cursor = socket.assigns.pagination.cursor
+
+    {new_posts, pagination} = Posts.list_posts(scope, cursor: cursor)
+    post_ids = Enum.map(new_posts, & &1.id)
+    new_counts = Posts.count_comments_by_post(scope, post_ids)
+    new_reactions = Posts.list_reactions_for_posts(scope, post_ids)
+    new_urls = build_media_urls(scope, new_posts)
+
+    {:noreply,
+     socket
+     |> update(:posts, &(&1 ++ new_posts))
+     |> assign(:pagination, pagination)
+     |> update(:comment_counts, &Map.merge(&1, new_counts))
+     |> update(:post_reactions, &Map.merge(&1, new_reactions))
+     |> update(:media_urls, &Map.merge(&1, new_urls))}
+  end
+
+  def handle_event("create_post", _params, socket) do
+    scope = socket.assigns.current_scope
+    body = socket.assigns.post_body
+
+    media_ids =
+      consume_uploaded_entries(socket, :media, fn %{session_id: session_id}, _entry ->
+        case Media.complete_upload(scope, session_id) do
+          {:ok, item} -> {:ok, item.id}
+          {:error, _} -> {:ok, nil}
+        end
+      end)
+      |> Enum.reject(&is_nil/1)
+
+    attrs = %{"body" => body, "media_ids" => media_ids}
+
+    case Posts.create_post(scope, attrs) do
       {:ok, _post} -> {:noreply, assign(socket, :post_body, "")}
       {:error, _} -> {:noreply, socket}
     end
+  end
+
+  def handle_event("cancel_upload", %{"ref" => ref}, socket) do
+    {:noreply, cancel_upload(socket, :media, ref)}
   end
 
   def handle_event("update_body", %{"value" => value}, socket) do
@@ -138,11 +184,14 @@ defmodule ShareCircleWeb.FeedLive do
 
   @impl true
   def handle_info({:post_created, %{post: post}}, socket) do
+    media_urls = build_media_urls(socket.assigns.current_scope, [post])
+
     {:noreply,
      socket
      |> update(:posts, &[post | &1])
      |> update(:comment_counts, &Map.put(&1, post.id, 0))
-     |> update(:post_reactions, &Map.put(&1, post.id, %{}))}
+     |> update(:post_reactions, &Map.put(&1, post.id, %{}))
+     |> update(:media_urls, &Map.merge(&1, media_urls))}
   end
 
   def handle_info({:reaction_added, %{reaction: reaction}}, socket) do
@@ -232,5 +281,73 @@ defmodule ShareCircleWeb.FeedLive do
     {:noreply, socket}
   end
 
+  def handle_info({:media_ready, media_item_id}, socket) do
+    scope = socket.assigns.current_scope
+
+    # Find which post contains this media item so we know the variant kind
+    media_item =
+      socket.assigns.posts
+      |> Enum.flat_map(& &1.post_media)
+      |> Enum.find_value(fn pm ->
+        if pm.media_item.id == media_item_id, do: pm.media_item
+      end)
+
+    socket =
+      if media_item do
+        variant_kind = if media_item.kind == "video", do: "thumb_256", else: "thumb_1024"
+
+        case Media.get_variant_url(scope, media_item_id, variant_kind) do
+          {:ok, url} -> update(socket, :media_urls, &Map.put(&1, media_item_id, url))
+          {:error, _} -> socket
+        end
+      else
+        socket
+      end
+
+    {:noreply, socket}
+  end
+
   def handle_info(_msg, socket), do: {:noreply, socket}
+
+  defp presign_upload(entry, socket) do
+    scope = socket.assigns.current_scope
+
+    case Media.initiate_upload(scope, %{
+           "mime_type" => entry.client_type,
+           "byte_size" => entry.client_size
+         }) do
+      {:ok, {session, put_result}} ->
+        meta = %{
+          uploader: "PresignedPut",
+          url: put_result.upload_url,
+          headers: put_result.headers,
+          session_id: session.id
+        }
+
+        {:ok, meta, socket}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp build_media_urls(scope, posts) do
+    posts
+    |> Enum.flat_map(fn post -> post.post_media || [] end)
+    |> Enum.reduce(%{}, fn pm, acc ->
+      item = pm.media_item
+      variant_kind = if item.kind == "video", do: "thumb_256", else: "thumb_1024"
+
+      case Media.get_variant_url(scope, item.id, variant_kind) do
+        {:ok, url} -> Map.put(acc, item.id, url)
+        {:error, _} -> acc
+      end
+    end)
+  end
+
+  def upload_error_to_string(:too_large), do: "File too large (max 100 MB)"
+  def upload_error_to_string(:not_accepted), do: "File type not supported"
+  def upload_error_to_string(:too_many_files), do: "Too many files (max 4)"
+  def upload_error_to_string(:quota_exceeded), do: "Storage quota exceeded"
+  def upload_error_to_string(_), do: "Upload error"
 end
