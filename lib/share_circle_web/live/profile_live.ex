@@ -2,8 +2,8 @@ defmodule ShareCircleWeb.ProfileLive do
   use ShareCircleWeb, :live_view
 
   alias ShareCircle.Families
-  alias ShareCircle.Media
   alias ShareCircle.Posts
+  alias ShareCircleWeb.LiveHelpers
 
   @impl true
   def mount(%{"family_id" => family_id, "user_id" => profile_user_id}, _session, socket) do
@@ -21,6 +21,8 @@ defmodule ShareCircleWeb.ProfileLive do
             {:ok, push_navigate(socket, to: ~p"/families/#{family_id}/members")}
 
           profile_membership ->
+            if connected?(socket), do: Process.send_after(self(), :refresh_media_urls, 240_000)
+
             {posts, pagination} = Posts.list_posts_by_author(scope, profile_user_id)
             media_urls = build_media_urls(scope, posts)
 
@@ -52,17 +54,13 @@ defmodule ShareCircleWeb.ProfileLive do
      |> update(:media_urls, &Map.merge(&1, build_media_urls(scope, new_posts)))}
   end
 
-  defp build_media_urls(scope, posts) do
-    posts
-    |> Enum.flat_map(fn post -> post.post_media || [] end)
-    |> Enum.reduce(%{}, fn pm, acc ->
-      item = pm.media_item
-      variant_kind = if item.kind == "video", do: "thumb_256", else: "thumb_1024"
-
-      case Media.get_variant_url(scope, item.id, variant_kind) do
-        {:ok, url} -> Map.put(acc, item.id, url)
-        {:error, _} -> acc
-      end
-    end)
+  def handle_info(:refresh_media_urls, socket) do
+    Process.send_after(self(), :refresh_media_urls, 240_000)
+    scope = socket.assigns.current_scope
+    {:noreply, assign(socket, :media_urls, build_media_urls(scope, socket.assigns.posts))}
   end
+
+  def handle_info(_msg, socket), do: {:noreply, socket}
+
+  defp build_media_urls(scope, posts), do: LiveHelpers.build_media_urls(scope, posts)
 end

@@ -11,7 +11,10 @@ defmodule ShareCircleWeb.Api.V1.NotificationController do
     opts = [unread_only: params["unread_only"] == "true"]
     notifications = Notifications.list_notifications(scope, opts)
     unread = Notifications.unread_count(scope)
-    Response.render_collection(conn, Enum.map(notifications, &NotificationJSON.render/1), %{unread_count: unread})
+
+    Response.render_collection(conn, Enum.map(notifications, &NotificationJSON.render/1), %{
+      unread_count: unread
+    })
   end
 
   def read(conn, %{"id" => id}) do

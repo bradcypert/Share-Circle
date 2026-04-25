@@ -93,5 +93,4 @@ config :swoosh, :api_client, false
 
 config :share_circle, :storage_adapter, ShareCircle.Storage.Local
 
-config :share_circle, ShareCircle.Storage.Local,
-  path: Path.expand("../uploads", __DIR__)
+config :share_circle, ShareCircle.Storage.Local, path: Path.expand("../uploads", __DIR__)

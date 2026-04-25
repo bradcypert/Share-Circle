@@ -402,7 +402,10 @@ defmodule ShareCircle.Accounts do
   def soft_delete_user(%User{} = user) do
     Repo.transaction(fn ->
       Repo.delete_all(from(t in UserToken, where: t.user_id == ^user.id))
-      {:ok, user} = Repo.update(Ecto.Changeset.change(user, deleted_at: DateTime.utc_now(:microsecond)))
+
+      {:ok, user} =
+        Repo.update(Ecto.Changeset.change(user, deleted_at: DateTime.utc_now(:microsecond)))
+
       user
     end)
   end

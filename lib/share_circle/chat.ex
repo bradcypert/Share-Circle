@@ -36,9 +36,7 @@ defmodule ShareCircle.Chat do
       nil ->
         Repo.transaction(fn ->
           conv =
-            Repo.insert!(
-              Conversation.create_changeset(%{family_id: family_id, kind: "family"})
-            )
+            Repo.insert!(Conversation.create_changeset(%{family_id: family_id, kind: "family"}))
 
           # Add all existing members
           memberships = Families.list_memberships_for_family(family_id)
@@ -70,8 +68,7 @@ defmodule ShareCircle.Chat do
       from(c in Conversation,
         join: cm in ConversationMember,
         on: cm.conversation_id == c.id and cm.user_id == ^user.id and is_nil(cm.left_at),
-        where:
-          c.id == ^conversation_id and c.family_id == ^family.id and is_nil(c.deleted_at),
+        where: c.id == ^conversation_id and c.family_id == ^family.id and is_nil(c.deleted_at),
         preload: [members: :user]
       )
       |> Repo.one()
@@ -168,6 +165,7 @@ defmodule ShareCircle.Chat do
       |> Repo.update()
       |> tap_ok(fn updated ->
         updated = Repo.preload(updated, :author)
+
         Events.broadcast_to_conversation(message.conversation_id, :message_updated, %{
           message: updated
         })
@@ -327,7 +325,8 @@ defmodule ShareCircle.Chat do
 
   defp notify_conversation_members(conv, actor_user_id, family_id, message) do
     from(cm in ConversationMember,
-      where: cm.conversation_id == ^conv.id and is_nil(cm.left_at) and cm.user_id != ^actor_user_id
+      where:
+        cm.conversation_id == ^conv.id and is_nil(cm.left_at) and cm.user_id != ^actor_user_id
     )
     |> ShareCircle.Repo.all()
     |> Enum.each(fn cm ->

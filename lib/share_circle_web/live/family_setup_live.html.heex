@@ -6,14 +6,26 @@
       <button
         phx-click="switch_tab"
         phx-value-tab="pick"
-        class={["pb-2 text-sm font-medium", if(@tab == :pick, do: "border-b-2 border-primary text-primary", else: "text-base-content/60")]}
+        class={[
+          "pb-2 text-sm font-medium",
+          if(@tab == :pick,
+            do: "border-b-2 border-primary text-primary",
+            else: "text-base-content/60"
+          )
+        ]}
       >
         Your Families
       </button>
       <button
         phx-click="switch_tab"
         phx-value-tab="create"
-        class={["pb-2 text-sm font-medium", if(@tab == :create, do: "border-b-2 border-primary text-primary", else: "text-base-content/60")]}
+        class={[
+          "pb-2 text-sm font-medium",
+          if(@tab == :create,
+            do: "border-b-2 border-primary text-primary",
+            else: "text-base-content/60"
+          )
+        ]}
       >
         Create New
       </button>
@@ -47,7 +59,9 @@
       <div>
         <label class="block text-sm font-medium text-base-content mb-1">URL slug</label>
         <.input field={@form[:slug]} placeholder="smiths" />
-        <p class="text-xs text-base-content/50 mt-1">Lowercase letters, numbers, and hyphens only</p>
+        <p class="text-xs text-base-content/50 mt-1">
+          Lowercase letters, numbers, and hyphens only
+        </p>
       </div>
       <div>
         <label class="block text-sm font-medium text-base-content mb-1">Timezone</label>

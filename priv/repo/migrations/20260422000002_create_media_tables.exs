@@ -5,7 +5,10 @@ defmodule ShareCircle.Repo.Migrations.CreateMediaTables do
     create table(:media_items, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :family_id, references(:families, type: :binary_id, on_delete: :delete_all), null: false
-      add :uploader_user_id, references(:users, type: :binary_id, on_delete: :delete_all), null: false
+
+      add :uploader_user_id, references(:users, type: :binary_id, on_delete: :delete_all),
+        null: false
+
       add :kind, :string, null: false
       add :mime_type, :string, null: false
       add :storage_key, :string, null: false
@@ -25,11 +28,17 @@ defmodule ShareCircle.Repo.Migrations.CreateMediaTables do
 
     create index(:media_items, [:family_id])
     create index(:media_items, [:uploader_user_id])
-    create index(:media_items, [:processing_status], where: "processing_status IN ('pending', 'processing')")
+
+    create index(:media_items, [:processing_status],
+             where: "processing_status IN ('pending', 'processing')"
+           )
 
     create table(:media_variants, primary_key: false) do
       add :id, :binary_id, primary_key: true
-      add :media_item_id, references(:media_items, type: :binary_id, on_delete: :delete_all), null: false
+
+      add :media_item_id, references(:media_items, type: :binary_id, on_delete: :delete_all),
+        null: false
+
       add :variant_kind, :string, null: false
       add :storage_key, :string, null: false
       add :mime_type, :string, null: false
@@ -62,7 +71,10 @@ defmodule ShareCircle.Repo.Migrations.CreateMediaTables do
     create table(:post_media, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :post_id, references(:posts, type: :binary_id, on_delete: :delete_all), null: false
-      add :media_item_id, references(:media_items, type: :binary_id, on_delete: :delete_all), null: false
+
+      add :media_item_id, references(:media_items, type: :binary_id, on_delete: :delete_all),
+        null: false
+
       add :position, :integer, null: false
       add :caption, :string
 

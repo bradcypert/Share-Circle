@@ -21,7 +21,14 @@ defmodule ShareCircle.Chat.Message do
 
   def create_changeset(attrs) do
     %__MODULE__{}
-    |> cast(attrs, [:conversation_id, :family_id, :author_id, :body, :reply_to_message_id, :metadata])
+    |> cast(attrs, [
+      :conversation_id,
+      :family_id,
+      :author_id,
+      :body,
+      :reply_to_message_id,
+      :metadata
+    ])
     |> validate_required([:conversation_id, :family_id, :author_id])
     |> validate_body_or_media()
     |> validate_length(:body, max: 4000)
@@ -37,6 +44,7 @@ defmodule ShareCircle.Chat.Message do
 
   defp validate_body_or_media(changeset) do
     body = get_field(changeset, :body)
+
     if is_nil(body) or String.trim(body) == "" do
       add_error(changeset, :body, "can't be blank")
     else

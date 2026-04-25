@@ -78,9 +78,7 @@ defmodule ShareCircleWeb.MembersLive do
 
       {:error, %Ecto.Changeset{} = cs} ->
         msg =
-          cs.errors
-          |> Enum.map(fn {field, {msg, _}} -> "#{field} #{msg}" end)
-          |> Enum.join(", ")
+          Enum.map_join(cs.errors, ", ", fn {field, {msg, _}} -> "#{field} #{msg}" end)
 
         {:noreply, assign(socket, :invite_error, msg)}
 

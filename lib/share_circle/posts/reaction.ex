@@ -25,9 +25,7 @@ defmodule ShareCircle.Posts.Reaction do
     |> cast(attrs, [:subject_type, :subject_id, :emoji])
     |> validate_required([:subject_type, :subject_id, :emoji])
     |> validate_inclusion(:subject_type, @subject_types)
-    |> validate_inclusion(:emoji, @allowed_emoji,
-      message: "must be one of the supported emoji"
-    )
+    |> validate_inclusion(:emoji, @allowed_emoji, message: "must be one of the supported emoji")
     |> unique_constraint([:user_id, :subject_type, :subject_id, :emoji])
   end
 end

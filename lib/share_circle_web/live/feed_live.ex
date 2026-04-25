@@ -4,6 +4,7 @@ defmodule ShareCircleWeb.FeedLive do
   alias ShareCircle.Media
   alias ShareCircle.Posts
   alias ShareCircle.PubSub
+  alias ShareCircleWeb.LiveHelpers
 
   @impl true
   def mount(%{"family_id" => family_id}, _session, socket) do
@@ -18,6 +19,7 @@ defmodule ShareCircleWeb.FeedLive do
 
         if connected?(socket) do
           PubSub.subscribe(PubSub.family_topic(family.id))
+          Process.send_after(self(), :refresh_media_urls, 240_000)
         end
 
         {posts, pagination} = Posts.list_posts(scope)
@@ -86,7 +88,7 @@ defmodule ShareCircleWeb.FeedLive do
 
     case Posts.create_post(scope, attrs) do
       {:ok, _post} -> {:noreply, assign(socket, :post_body, "")}
-      {:error, _} -> {:noreply, socket}
+      {:error, _} -> {:noreply, put_flash(socket, :error, "Could not create post.")}
     end
   end
 
@@ -132,7 +134,7 @@ defmodule ShareCircleWeb.FeedLive do
     {:noreply,
      socket
      |> assign(:editing_post_id, post_id)
-     |> assign(:editing_body, post && post.body || "")}
+     |> assign(:editing_body, (post && post.body) || "")}
   end
 
   def handle_event("cancel_edit_post", _params, socket) do
@@ -144,12 +146,14 @@ defmodule ShareCircleWeb.FeedLive do
   end
 
   def handle_event("save_post", %{"post_id" => post_id}, socket) do
-    case Posts.update_post(socket.assigns.current_scope, post_id, %{"body" => socket.assigns.editing_body}) do
+    case Posts.update_post(socket.assigns.current_scope, post_id, %{
+           "body" => socket.assigns.editing_body
+         }) do
       {:ok, _post} ->
         {:noreply, socket |> assign(:editing_post_id, nil) |> assign(:editing_body, "")}
 
       {:error, _} ->
-        {:noreply, socket}
+        {:noreply, put_flash(socket, :error, "Could not save post.")}
     end
   end
 
@@ -178,7 +182,7 @@ defmodule ShareCircleWeb.FeedLive do
 
     case Posts.create_comment(scope, post_id, %{"body" => body}) do
       {:ok, _comment} -> {:noreply, assign(socket, :comment_body, "")}
-      {:error, _} -> {:noreply, socket}
+      {:error, _} -> {:noreply, put_flash(socket, :error, "Could not post comment.")}
     end
   end
 
@@ -198,9 +202,14 @@ defmodule ShareCircleWeb.FeedLive do
     if reaction.subject_type == "post" do
       {:noreply,
        update(socket, :post_reactions, fn reactions ->
-         Map.update(reactions, reaction.subject_id, %{reaction.emoji => [reaction.user_id]}, fn emojis ->
-           Map.update(emojis, reaction.emoji, [reaction.user_id], &[reaction.user_id | &1])
-         end)
+         Map.update(
+           reactions,
+           reaction.subject_id,
+           %{reaction.emoji => [reaction.user_id]},
+           fn emojis ->
+             Map.update(emojis, reaction.emoji, [reaction.user_id], &[reaction.user_id | &1])
+           end
+         )
        end)}
     else
       {:noreply, socket}
@@ -208,7 +217,8 @@ defmodule ShareCircleWeb.FeedLive do
   end
 
   def handle_info(
-        {:reaction_removed, %{subject_type: "post", subject_id: post_id, emoji: emoji, user_id: user_id}},
+        {:reaction_removed,
+         %{subject_type: "post", subject_id: post_id, emoji: emoji, user_id: user_id}},
         socket
       ) do
     {:noreply,
@@ -282,32 +292,33 @@ defmodule ShareCircleWeb.FeedLive do
   end
 
   def handle_info({:media_ready, media_item_id}, socket) do
-    scope = socket.assigns.current_scope
-
-    # Find which post contains this media item so we know the variant kind
     media_item =
       socket.assigns.posts
       |> Enum.flat_map(& &1.post_media)
-      |> Enum.find_value(fn pm ->
-        if pm.media_item.id == media_item_id, do: pm.media_item
-      end)
+      |> Enum.find_value(fn pm -> pm.media_item.id == media_item_id && pm.media_item end)
 
-    socket =
-      if media_item do
-        variant_kind = if media_item.kind == "video", do: "thumb_256", else: "thumb_1024"
+    {:noreply, maybe_load_media_url(socket, media_item, media_item_id)}
+  end
 
-        case Media.get_variant_url(scope, media_item_id, variant_kind) do
-          {:ok, url} -> update(socket, :media_urls, &Map.put(&1, media_item_id, url))
-          {:error, _} -> socket
-        end
-      else
-        socket
-      end
-
-    {:noreply, socket}
+  def handle_info(:refresh_media_urls, socket) do
+    Process.send_after(self(), :refresh_media_urls, 240_000)
+    scope = socket.assigns.current_scope
+    {:noreply, assign(socket, :media_urls, build_media_urls(scope, socket.assigns.posts))}
   end
 
   def handle_info(_msg, socket), do: {:noreply, socket}
+
+  defp maybe_load_media_url(socket, nil, _media_item_id), do: socket
+
+  defp maybe_load_media_url(socket, media_item, media_item_id) do
+    scope = socket.assigns.current_scope
+    variant_kind = if media_item.kind == "video", do: "thumb_256", else: "thumb_1024"
+
+    case Media.get_variant_url(scope, media_item_id, variant_kind) do
+      {:ok, url} -> update(socket, :media_urls, &Map.put(&1, media_item_id, url))
+      {:error, _} -> socket
+    end
+  end
 
   defp presign_upload(entry, socket) do
     scope = socket.assigns.current_scope
@@ -331,19 +342,7 @@ defmodule ShareCircleWeb.FeedLive do
     end
   end
 
-  defp build_media_urls(scope, posts) do
-    posts
-    |> Enum.flat_map(fn post -> post.post_media || [] end)
-    |> Enum.reduce(%{}, fn pm, acc ->
-      item = pm.media_item
-      variant_kind = if item.kind == "video", do: "thumb_256", else: "thumb_1024"
-
-      case Media.get_variant_url(scope, item.id, variant_kind) do
-        {:ok, url} -> Map.put(acc, item.id, url)
-        {:error, _} -> acc
-      end
-    end)
-  end
+  defp build_media_urls(scope, posts), do: LiveHelpers.build_media_urls(scope, posts)
 
   def upload_error_to_string(:too_large), do: "File too large (max 100 MB)"
   def upload_error_to_string(:not_accepted), do: "File type not supported"

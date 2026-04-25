@@ -1,4 +1,8 @@
-<.app_shell current_scope={@current_scope} active_tab="chat" main_class="overflow-hidden flex flex-col">
+<.app_shell
+  current_scope={@current_scope}
+  active_tab="chat"
+  main_class="overflow-hidden flex flex-col"
+>
   <div class="flex flex-1 min-h-0">
     <%!-- Conversation sidebar — full-screen overlay on mobile, fixed panel on desktop --%>
     <aside class={[
@@ -10,13 +14,18 @@
       )
     ]}>
       <div class="px-3 py-3 border-b border-base-300 flex items-center justify-between">
-        <h2 class="text-xs font-semibold text-base-content/40 uppercase tracking-wider px-1">Conversations</h2>
+        <h2 class="text-xs font-semibold text-base-content/40 uppercase tracking-wider px-1">
+          Conversations
+        </h2>
         <button
           phx-click="toggle_new_conv"
           class="w-6 h-6 rounded flex items-center justify-center text-base-content/40 hover:text-base-content hover:bg-base-300 transition-colors"
           title="New conversation"
         >
-          <.icon name={if @new_conv_open, do: "hero-x-mark", else: "hero-pencil-square"} class="size-4" />
+          <.icon
+            name={if @new_conv_open, do: "hero-x-mark", else: "hero-pencil-square"}
+            class="size-4"
+          />
         </button>
       </div>
 
@@ -58,6 +67,7 @@
             <input
               type="text"
               phx-keyup="update_new_conv_name"
+              phx-debounce="300"
               value={@new_conv_name}
               placeholder="Group name"
               class="w-full bg-base-200 border border-base-300 rounded-md px-3 py-1.5 text-xs text-base-content placeholder-base-content/35 focus:outline-none focus:border-base-content/30"
@@ -123,7 +133,9 @@
           >
             <p class="text-sm font-medium truncate">{conversation_display_name(conv)}</p>
             <%= if conv.last_message_preview do %>
-              <p class="text-xs text-base-content/40 truncate mt-0.5">{conv.last_message_preview}</p>
+              <p class="text-xs text-base-content/40 truncate mt-0.5">
+                {conv.last_message_preview}
+              </p>
             <% end %>
           </button>
         <% end %>
@@ -154,7 +166,11 @@
         </div>
 
         <%!-- Messages --%>
-        <div class="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4" id="messages" phx-hook="ScrollBottom">
+        <div
+          class="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4"
+          id="messages"
+          phx-hook="ScrollBottom"
+        >
           <%= if @message_pagination.next_cursor do %>
             <div class="flex justify-center">
               <button
@@ -176,7 +192,9 @@
               </div>
               <div class="flex-1 min-w-0">
                 <div class="flex items-baseline gap-2">
-                  <span class="text-sm font-semibold text-base-content">{msg.author.display_name}</span>
+                  <span class="text-sm font-semibold text-base-content">
+                    {msg.author.display_name}
+                  </span>
                   <span class="text-xs text-base-content/35">
                     {Elixir.Calendar.strftime(msg.inserted_at, "%-I:%M %p")}
                   </span>
@@ -207,6 +225,7 @@
                     <input
                       type="text"
                       phx-keyup="update_editing_message_body"
+                      phx-debounce="300"
                       value={@editing_message_body}
                       class="flex-1 bg-base-200 border border-base-300 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-base-content/30 transition-colors"
                       phx-key="Enter"
@@ -217,11 +236,15 @@
                       phx-click="save_message"
                       phx-value-id={msg.id}
                       class="btn btn-primary btn-xs rounded-md px-2"
-                    >Save</button>
+                    >
+                      Save
+                    </button>
                     <button
                       phx-click="cancel_edit_message"
                       class="btn btn-ghost btn-xs rounded-md px-2 text-base-content/50"
-                    >✕</button>
+                    >
+                      ✕
+                    </button>
                   </div>
                 <% else %>
                   <p class="text-sm text-base-content/80 mt-0.5 leading-relaxed">{msg.body}</p>
@@ -232,8 +255,10 @@
         </div>
 
         <%!-- Typing indicator --%>
-        <%= if @typing_users != [] do %>
-          <p class="px-5 py-1 text-xs text-base-content/40 italic flex-shrink-0">Someone is typing…</p>
+        <%= if label = typing_label(@typing_users, @family_members) do %>
+          <p class="px-5 py-1 text-xs text-base-content/40 italic flex-shrink-0">
+            {label}
+          </p>
         <% end %>
 
         <%!-- Message input --%>

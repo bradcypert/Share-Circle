@@ -1,6 +1,5 @@
 <.app_shell current_scope={@current_scope} active_tab="members">
   <div class="max-w-2xl mx-auto px-4 py-8 space-y-8">
-
     <%!-- Members section --%>
     <div class="space-y-4">
       <div class="flex items-center justify-between">
@@ -21,7 +20,9 @@
       <%!-- Invite form --%>
       <%= if @show_invite_form do %>
         <div class="bg-base-100 border border-base-300 rounded-lg p-5 space-y-4">
-          <h2 class="text-sm font-semibold text-base-content">Invite someone to {@current_scope.family.name}</h2>
+          <h2 class="text-sm font-semibold text-base-content">
+            Invite someone to {@current_scope.family.name}
+          </h2>
 
           <%= if @invite_error do %>
             <p class="text-xs text-error">{@invite_error}</p>
@@ -33,6 +34,7 @@
               <input
                 type="email"
                 phx-keyup="update_invite_email"
+                phx-debounce="300"
                 value={@invite_email}
                 placeholder="name@example.com"
                 class="w-full bg-base-200 border border-base-300 rounded-md px-3 py-2 text-sm text-base-content placeholder-base-content/35 focus:outline-none focus:border-base-content/30 transition-colors"
@@ -46,9 +48,15 @@
                 name="role"
                 class="w-full bg-base-200 border border-base-300 rounded-md px-3 py-2 text-sm text-base-content focus:outline-none focus:border-base-content/30 transition-colors"
               >
-                <option value="member" selected={@invite_role == "member"}>Member — can post, comment, and react</option>
-                <option value="admin" selected={@invite_role == "admin"}>Admin — can also manage members and invitations</option>
-                <option value="limited" selected={@invite_role == "limited"}>Limited — read-only access</option>
+                <option value="member" selected={@invite_role == "member"}>
+                  Member — can post, comment, and react
+                </option>
+                <option value="admin" selected={@invite_role == "admin"}>
+                  Admin — can also manage members and invitations
+                </option>
+                <option value="limited" selected={@invite_role == "limited"}>
+                  Limited — read-only access
+                </option>
               </select>
             </div>
           </div>
@@ -83,7 +91,10 @@
               </p>
               <p class="text-xs text-base-content/40 capitalize">{membership.role}</p>
             </div>
-            <.icon name="hero-chevron-right" class="size-4 text-base-content/25 group-hover:text-base-content/50 transition-colors" />
+            <.icon
+              name="hero-chevron-right"
+              class="size-4 text-base-content/25 group-hover:text-base-content/50 transition-colors"
+            />
           </.link>
         <% end %>
       </div>
@@ -106,7 +117,10 @@
               <div class="flex-1 min-w-0">
                 <p class="text-sm text-base-content truncate">{inv.email}</p>
                 <p class="text-xs text-base-content/40 capitalize">
-                  Invited as {inv.role} · expires {Elixir.Calendar.strftime(inv.expires_at, "%b %-d")}
+                  Invited as {inv.role} · expires {Elixir.Calendar.strftime(
+                    inv.expires_at,
+                    "%b %-d"
+                  )}
                 </p>
               </div>
               <button
@@ -122,6 +136,5 @@
         </div>
       </div>
     <% end %>
-
   </div>
 </.app_shell>

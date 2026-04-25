@@ -21,7 +21,14 @@ defmodule ShareCircle.Media.UploadSession do
 
   def create_changeset(attrs) do
     %__MODULE__{}
-    |> cast(attrs, [:family_id, :user_id, :storage_key, :expected_byte_size, :expected_mime_type, :expires_at])
+    |> cast(attrs, [
+      :family_id,
+      :user_id,
+      :storage_key,
+      :expected_byte_size,
+      :expected_mime_type,
+      :expires_at
+    ])
     |> validate_required([:family_id, :user_id, :storage_key, :expected_byte_size, :expires_at])
   end
 

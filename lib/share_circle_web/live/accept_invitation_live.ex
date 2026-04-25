@@ -18,7 +18,9 @@ defmodule ShareCircleWeb.AcceptInvitationLive do
         case Chat.ensure_family_conversation(membership.family_id) do
           {:ok, conv} ->
             Chat.add_member_to_conversation(conv.id, membership.user_id, membership.family_id)
-          _ -> :ok
+
+          _ ->
+            :ok
         end
 
         {:ok,

@@ -30,8 +30,18 @@ defmodule ShareCircle.Calendar.CalendarEvent do
 
   def create_changeset(attrs) do
     %__MODULE__{}
-    |> cast(attrs, [:family_id, :created_by_user_id, :title, :description, :location,
-                    :starts_at, :ends_at, :all_day, :timezone, :cover_media_id])
+    |> cast(attrs, [
+      :family_id,
+      :created_by_user_id,
+      :title,
+      :description,
+      :location,
+      :starts_at,
+      :ends_at,
+      :all_day,
+      :timezone,
+      :cover_media_id
+    ])
     |> validate_required([:family_id, :created_by_user_id, :title, :starts_at, :timezone])
     |> validate_length(:title, min: 1, max: 500)
     |> validate_ends_after_starts()
@@ -39,8 +49,16 @@ defmodule ShareCircle.Calendar.CalendarEvent do
 
   def update_changeset(event, attrs) do
     event
-    |> cast(attrs, [:title, :description, :location, :starts_at, :ends_at, :all_day,
-                    :timezone, :cover_media_id])
+    |> cast(attrs, [
+      :title,
+      :description,
+      :location,
+      :starts_at,
+      :ends_at,
+      :all_day,
+      :timezone,
+      :cover_media_id
+    ])
     |> validate_required([:title, :starts_at, :timezone])
     |> validate_length(:title, min: 1, max: 500)
     |> validate_ends_after_starts()

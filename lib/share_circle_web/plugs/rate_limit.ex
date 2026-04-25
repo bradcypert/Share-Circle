@@ -29,7 +29,9 @@ defmodule ShareCircleWeb.Plugs.RateLimit do
       {:error, :rate_limited} ->
         conn
         |> put_status(:too_many_requests)
-        |> json(%{error: %{code: "rate_limited", message: "Too many requests. Please slow down."}})
+        |> json(%{
+          error: %{code: "rate_limited", message: "Too many requests. Please slow down."}
+        })
         |> halt()
     end
   end

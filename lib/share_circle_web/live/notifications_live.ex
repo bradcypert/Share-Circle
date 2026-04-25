@@ -26,12 +26,16 @@ defmodule ShareCircleWeb.NotificationsLive do
   end
 
   @impl true
-  def handle_event("push_subscribed", %{"endpoint" => endpoint, "p256dh_key" => p256dh, "auth_key" => auth}, socket) do
+  def handle_event(
+        "push_subscribed",
+        %{"endpoint" => endpoint, "p256dh_key" => p256dh, "auth_key" => auth},
+        socket
+      ) do
     attrs = %{"endpoint" => endpoint, "p256dh_key" => p256dh, "auth_key" => auth}
 
     case ShareCircle.Notifications.register_push_subscription(socket.assigns.current_scope, attrs) do
       {:ok, _sub} -> {:noreply, assign(socket, :push_subscribed, true)}
-      {:error, _} -> {:noreply, socket}
+      {:error, _} -> {:noreply, put_flash(socket, :error, "Could not enable push notifications.")}
     end
   end
 

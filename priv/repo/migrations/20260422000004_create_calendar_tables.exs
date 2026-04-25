@@ -5,7 +5,10 @@ defmodule ShareCircle.Repo.Migrations.CreateCalendarTables do
     create table(:calendar_events, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :family_id, references(:families, type: :binary_id, on_delete: :delete_all), null: false
-      add :created_by_user_id, references(:users, type: :binary_id, on_delete: :delete_all), null: false
+
+      add :created_by_user_id, references(:users, type: :binary_id, on_delete: :delete_all),
+        null: false
+
       add :title, :text, null: false
       add :description, :text
       add :location, :text
@@ -20,11 +23,15 @@ defmodule ShareCircle.Repo.Migrations.CreateCalendarTables do
 
     create index(:calendar_events, [:family_id, :starts_at],
              where: "deleted_at IS NULL",
-             name: :calendar_events_family_time)
+             name: :calendar_events_family_time
+           )
 
     create table(:rsvps, primary_key: false) do
       add :id, :binary_id, primary_key: true
-      add :event_id, references(:calendar_events, type: :binary_id, on_delete: :delete_all), null: false
+
+      add :event_id, references(:calendar_events, type: :binary_id, on_delete: :delete_all),
+        null: false
+
       add :user_id, references(:users, type: :binary_id, on_delete: :delete_all), null: false
       add :family_id, references(:families, type: :binary_id, on_delete: :delete_all), null: false
       add :status, :text, null: false

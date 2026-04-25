@@ -73,7 +73,8 @@ defmodule ShareCircle.Notifications do
   def unread_count(%Scope{user: user}) do
     Repo.aggregate(
       from(n in Notification,
-        where: n.recipient_user_id == ^user.id and is_nil(n.read_at)),
+        where: n.recipient_user_id == ^user.id and is_nil(n.read_at)
+      ),
       :count
     )
   end
@@ -88,7 +89,11 @@ defmodule ShareCircle.Notifications do
 
       notification ->
         {:ok, updated} = Repo.update(Ecto.Changeset.change(notification, read_at: now))
-        PubSub.broadcast(PubSub.user_topic(user.id), :notification_read, %{notification_id: updated.id})
+
+        PubSub.broadcast(PubSub.user_topic(user.id), :notification_read, %{
+          notification_id: updated.id
+        })
+
         {:ok, updated}
     end
   end
@@ -100,7 +105,8 @@ defmodule ShareCircle.Notifications do
     {count, _} =
       Repo.update_all(
         from(n in Notification,
-          where: n.recipient_user_id == ^user.id and is_nil(n.read_at)),
+          where: n.recipient_user_id == ^user.id and is_nil(n.read_at)
+        ),
         set: [read_at: now]
       )
 

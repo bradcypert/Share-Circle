@@ -46,7 +46,15 @@ defmodule ShareCircle.Media.MediaItem do
       :original_filename,
       :metadata
     ])
-    |> validate_required([:family_id, :uploader_user_id, :kind, :mime_type, :storage_key, :byte_size, :checksum])
+    |> validate_required([
+      :family_id,
+      :uploader_user_id,
+      :kind,
+      :mime_type,
+      :storage_key,
+      :byte_size,
+      :checksum
+    ])
     |> validate_inclusion(:kind, @valid_kinds)
   end
 

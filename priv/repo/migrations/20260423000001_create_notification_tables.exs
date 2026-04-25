@@ -5,7 +5,10 @@ defmodule ShareCircle.Repo.Migrations.CreateNotificationTables do
     create table(:notifications, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :family_id, references(:families, type: :binary_id, on_delete: :delete_all), null: false
-      add :recipient_user_id, references(:users, type: :binary_id, on_delete: :delete_all), null: false
+
+      add :recipient_user_id, references(:users, type: :binary_id, on_delete: :delete_all),
+        null: false
+
       add :actor_user_id, references(:users, type: :binary_id, on_delete: :nilify_all)
       add :kind, :text, null: false
       add :subject_type, :text
@@ -17,10 +20,12 @@ defmodule ShareCircle.Repo.Migrations.CreateNotificationTables do
 
     create index(:notifications, [:recipient_user_id, :inserted_at],
              where: "read_at IS NULL",
-             name: :notifications_recipient_unread)
+             name: :notifications_recipient_unread
+           )
 
     create index(:notifications, [:recipient_user_id, :inserted_at],
-             name: :notifications_recipient_all)
+             name: :notifications_recipient_all
+           )
 
     create table(:notification_preferences, primary_key: false) do
       add :id, :binary_id, primary_key: true

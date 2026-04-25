@@ -71,7 +71,7 @@ defmodule ShareCircleWeb.ChatLive do
     else
       # Unsubscribe from old, subscribe to new
       if socket.assigns.active_conv do
-        PubSub.subscribe(PubSub.conversation_topic(socket.assigns.active_conv.id))
+        PubSub.unsubscribe(PubSub.conversation_topic(socket.assigns.active_conv.id))
       end
 
       {conv, messages, msg_pagination} = load_conversation(scope, conv_id)
@@ -133,8 +133,15 @@ defmodule ShareCircleWeb.ChatLive do
 
     attrs =
       case kind do
-        "direct" -> %{"kind" => "direct", "member_user_ids" => member_ids}
-        "group" -> %{"kind" => "group", "name" => socket.assigns.new_conv_name, "member_user_ids" => member_ids}
+        "direct" ->
+          %{"kind" => "direct", "member_user_ids" => member_ids}
+
+        "group" ->
+          %{
+            "kind" => "group",
+            "name" => socket.assigns.new_conv_name,
+            "member_user_ids" => member_ids
+          }
       end
 
     case Chat.create_conversation(scope, attrs) do
@@ -150,7 +157,7 @@ defmodule ShareCircleWeb.ChatLive do
          |> push_patch(to: ~p"/families/#{socket.assigns.family_id}/chat/#{conv.id}")}
 
       {:error, _} ->
-        {:noreply, socket}
+        {:noreply, put_flash(socket, :error, "Could not create conversation.")}
     end
   end
 
@@ -160,7 +167,7 @@ defmodule ShareCircleWeb.ChatLive do
     {:noreply,
      socket
      |> assign(:editing_message_id, id)
-     |> assign(:editing_message_body, msg && msg.body || "")}
+     |> assign(:editing_message_body, (msg && msg.body) || "")}
   end
 
   def handle_event("cancel_edit_message", _params, socket) do
@@ -176,10 +183,11 @@ defmodule ShareCircleWeb.ChatLive do
 
     case Chat.update_message(scope, id, %{"body" => socket.assigns.editing_message_body}) do
       {:ok, _msg} ->
-        {:noreply, socket |> assign(:editing_message_id, nil) |> assign(:editing_message_body, "")}
+        {:noreply,
+         socket |> assign(:editing_message_id, nil) |> assign(:editing_message_body, "")}
 
       {:error, _} ->
-        {:noreply, socket}
+        {:noreply, put_flash(socket, :error, "Could not save message.")}
     end
   end
 
@@ -204,7 +212,7 @@ defmodule ShareCircleWeb.ChatLive do
          |> assign(:typing_timer, nil)}
 
       {:error, _} ->
-        {:noreply, socket}
+        {:noreply, put_flash(socket, :error, "Could not send message.")}
     end
   end
 
@@ -224,6 +232,13 @@ defmodule ShareCircleWeb.ChatLive do
       {:noreply, socket}
     end
   end
+
+  def handle_event(
+        "load_older",
+        _,
+        %{assigns: %{message_pagination: %{next_cursor: nil}}} = socket
+      ),
+      do: {:noreply, socket}
 
   def handle_event("load_older", _params, socket) do
     scope = socket.assigns.current_scope
@@ -248,7 +263,7 @@ defmodule ShareCircleWeb.ChatLive do
 
   @impl true
   def handle_info({:message_created, %{message: message}}, socket) do
-    {:noreply, update(socket, :messages, &[message | &1])}
+    {:noreply, update(socket, :messages, &(&1 ++ [message]))}
   end
 
   def handle_info({:message_updated, %{message: message}}, socket) do
@@ -284,12 +299,30 @@ defmodule ShareCircleWeb.ChatLive do
 
   def handle_info(_, socket), do: {:noreply, socket}
 
+  defp typing_label([], _members), do: nil
+
+  defp typing_label(user_ids, members) do
+    names =
+      user_ids
+      |> Enum.map(fn uid ->
+        case Enum.find(members, &(&1.user_id == uid)) do
+          %{user: %{display_name: name}} -> name
+          _ -> "Someone"
+        end
+      end)
+
+    case names do
+      [name] -> "#{name} is typing…"
+      [a, b] -> "#{a} and #{b} are typing…"
+      [a | _] -> "#{a} and others are typing…"
+    end
+  end
+
   defp conversation_display_name(%{kind: "family"}), do: "Family Chat"
   defp conversation_display_name(%{kind: "group", name: name}), do: name
+
   defp conversation_display_name(%{kind: "direct", members: members}) do
-    members
-    |> Enum.map(& &1.user.display_name)
-    |> Enum.join(", ")
+    Enum.map_join(members, ", ", & &1.user.display_name)
   end
 
   defp load_conversation(scope, conv_id) do

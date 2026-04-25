@@ -67,7 +67,7 @@ defmodule ShareCircleWeb.EventsLive do
           "description" => event.description || "",
           "location" => event.location || "",
           "starts_at" => DateTime.to_iso8601(event.starts_at),
-          "ends_at" => event.ends_at && DateTime.to_iso8601(event.ends_at) || "",
+          "ends_at" => (event.ends_at && DateTime.to_iso8601(event.ends_at)) || "",
           "timezone" => event.timezone || "UTC"
         },
         as: "event"
@@ -152,41 +152,65 @@ defmodule ShareCircleWeb.EventsLive do
     <div class="space-y-3">
       <div class="space-y-1">
         <label class="text-xs font-medium text-base-content/60">Title</label>
-        <input type="text" name={@form[:title].name} value={Phoenix.HTML.Form.input_value(@form, :title)}
+        <input
+          type="text"
+          name={@form[:title].name}
+          value={Phoenix.HTML.Form.input_value(@form, :title)}
           placeholder="What's the occasion?"
-          class="w-full bg-base-200 border border-base-300 rounded-md px-3 py-2 text-sm text-base-content placeholder-base-content/35 focus:outline-none focus:border-base-content/30 transition-colors" />
+          class="w-full bg-base-200 border border-base-300 rounded-md px-3 py-2 text-sm text-base-content placeholder-base-content/35 focus:outline-none focus:border-base-content/30 transition-colors"
+        />
       </div>
       <div class="space-y-1">
         <label class="text-xs font-medium text-base-content/60">Description</label>
-        <input type="text" name={@form[:description].name} value={Phoenix.HTML.Form.input_value(@form, :description)}
+        <input
+          type="text"
+          name={@form[:description].name}
+          value={Phoenix.HTML.Form.input_value(@form, :description)}
           placeholder="Optional details"
-          class="w-full bg-base-200 border border-base-300 rounded-md px-3 py-2 text-sm text-base-content placeholder-base-content/35 focus:outline-none focus:border-base-content/30 transition-colors" />
+          class="w-full bg-base-200 border border-base-300 rounded-md px-3 py-2 text-sm text-base-content placeholder-base-content/35 focus:outline-none focus:border-base-content/30 transition-colors"
+        />
       </div>
       <div class="space-y-1">
         <label class="text-xs font-medium text-base-content/60">Location</label>
-        <input type="text" name={@form[:location].name} value={Phoenix.HTML.Form.input_value(@form, :location)}
+        <input
+          type="text"
+          name={@form[:location].name}
+          value={Phoenix.HTML.Form.input_value(@form, :location)}
           placeholder="Where?"
-          class="w-full bg-base-200 border border-base-300 rounded-md px-3 py-2 text-sm text-base-content placeholder-base-content/35 focus:outline-none focus:border-base-content/30 transition-colors" />
+          class="w-full bg-base-200 border border-base-300 rounded-md px-3 py-2 text-sm text-base-content placeholder-base-content/35 focus:outline-none focus:border-base-content/30 transition-colors"
+        />
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div class="space-y-1">
           <label class="text-xs font-medium text-base-content/60">Starts at</label>
-          <input type="datetime-local" name={@form[:starts_at].name} value={Phoenix.HTML.Form.input_value(@form, :starts_at)}
-            class="w-full bg-base-200 border border-base-300 rounded-md px-3 py-2 text-sm text-base-content focus:outline-none focus:border-base-content/30 transition-colors" />
+          <input
+            type="datetime-local"
+            name={@form[:starts_at].name}
+            value={Phoenix.HTML.Form.input_value(@form, :starts_at)}
+            class="w-full bg-base-200 border border-base-300 rounded-md px-3 py-2 text-sm text-base-content focus:outline-none focus:border-base-content/30 transition-colors"
+          />
         </div>
         <div class="space-y-1">
           <label class="text-xs font-medium text-base-content/60">
             Ends at <span class="font-normal opacity-60">(optional)</span>
           </label>
-          <input type="datetime-local" name={@form[:ends_at].name} value={Phoenix.HTML.Form.input_value(@form, :ends_at)}
-            class="w-full bg-base-200 border border-base-300 rounded-md px-3 py-2 text-sm text-base-content focus:outline-none focus:border-base-content/30 transition-colors" />
+          <input
+            type="datetime-local"
+            name={@form[:ends_at].name}
+            value={Phoenix.HTML.Form.input_value(@form, :ends_at)}
+            class="w-full bg-base-200 border border-base-300 rounded-md px-3 py-2 text-sm text-base-content focus:outline-none focus:border-base-content/30 transition-colors"
+          />
         </div>
       </div>
       <div class="space-y-1">
         <label class="text-xs font-medium text-base-content/60">Timezone</label>
-        <input type="text" name={@form[:timezone].name} value={Phoenix.HTML.Form.input_value(@form, :timezone)}
+        <input
+          type="text"
+          name={@form[:timezone].name}
+          value={Phoenix.HTML.Form.input_value(@form, :timezone)}
           placeholder="UTC"
-          class="w-full bg-base-200 border border-base-300 rounded-md px-3 py-2 text-sm text-base-content placeholder-base-content/35 focus:outline-none focus:border-base-content/30 transition-colors" />
+          class="w-full bg-base-200 border border-base-300 rounded-md px-3 py-2 text-sm text-base-content placeholder-base-content/35 focus:outline-none focus:border-base-content/30 transition-colors"
+        />
       </div>
     </div>
     """

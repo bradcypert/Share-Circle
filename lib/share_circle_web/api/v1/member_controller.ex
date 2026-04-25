@@ -14,7 +14,8 @@ defmodule ShareCircleWeb.Api.V1.MemberController do
 
   # PATCH /api/v1/families/:family_id/members/:user_id
   def update(conn, %{"user_id" => user_id, "member" => %{"role" => role}}) do
-    with {:ok, membership} <- Families.update_member_role(conn.assigns.current_scope, user_id, role) do
+    with {:ok, membership} <-
+           Families.update_member_role(conn.assigns.current_scope, user_id, role) do
       Response.render_data(conn, MemberJSON.render(membership))
     end
   end

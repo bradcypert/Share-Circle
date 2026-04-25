@@ -11,7 +11,8 @@ defmodule ShareCircleWeb.Api.V1.MessageController do
       cursor: params["cursor"]
     ]
 
-    with {:ok, {messages, pagination}} <- Chat.list_messages(conn.assigns.current_scope, conv_id, opts) do
+    with {:ok, {messages, pagination}} <-
+           Chat.list_messages(conn.assigns.current_scope, conv_id, opts) do
       json(conn, %{
         data: Enum.map(messages, &render_message/1),
         meta: pagination
@@ -40,7 +41,8 @@ defmodule ShareCircleWeb.Api.V1.MessageController do
   end
 
   def mark_read(conn, %{"conversation_id" => conv_id} = params) do
-    with {:ok, _} <- Chat.mark_read(conn.assigns.current_scope, conv_id, params["last_read_message_id"]) do
+    with {:ok, _} <-
+           Chat.mark_read(conn.assigns.current_scope, conv_id, params["last_read_message_id"]) do
       send_resp(conn, :no_content, "")
     end
   end

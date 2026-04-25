@@ -24,6 +24,10 @@ defmodule ShareCircle.PubSub do
     Phoenix.PubSub.subscribe(@pubsub, topic)
   end
 
+  def unsubscribe(topic) when is_binary(topic) do
+    Phoenix.PubSub.unsubscribe(@pubsub, topic)
+  end
+
   def broadcast(topic, event, payload) when is_binary(topic) and is_atom(event) do
     Phoenix.PubSub.broadcast(@pubsub, topic, {event, payload})
   end

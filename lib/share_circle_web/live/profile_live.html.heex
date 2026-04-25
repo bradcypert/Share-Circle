@@ -65,7 +65,9 @@
                 <% end %>
               </div>
               <%= if post.body && post.body != "" do %>
-                <p class="text-sm text-base-content/85 whitespace-pre-wrap leading-relaxed">{post.body}</p>
+                <p class="text-sm text-base-content/85 whitespace-pre-wrap leading-relaxed">
+                  {post.body}
+                </p>
               <% end %>
               <%!-- Media attachments --%>
               <%= if post.post_media != [] do %>

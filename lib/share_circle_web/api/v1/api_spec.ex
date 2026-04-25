@@ -12,7 +12,8 @@ defmodule ShareCircleWeb.Api.V1.ApiSpec do
       info: %Info{
         title: "ShareCircle API",
         version: "1.0.0",
-        description: "Private family social network API. All endpoints require Bearer authentication."
+        description:
+          "Private family social network API. All endpoints require Bearer authentication."
       },
       servers: [
         %Server{url: "/api/v1", description: "Current version"}

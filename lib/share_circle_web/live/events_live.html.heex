@@ -15,7 +15,9 @@
         <.form for={@event_form} phx-submit="create_event" class="space-y-4">
           <.event_fields form={@event_form} />
           <div class="flex justify-end pt-1">
-            <button type="submit" class="btn btn-primary btn-sm rounded-md px-4">Create event</button>
+            <button type="submit" class="btn btn-primary btn-sm rounded-md px-4">
+              Create event
+            </button>
           </div>
         </.form>
       </div>
@@ -49,7 +51,9 @@
                     >
                       Cancel
                     </button>
-                    <button type="submit" class="btn btn-primary btn-sm rounded-md px-4">Save changes</button>
+                    <button type="submit" class="btn btn-primary btn-sm rounded-md px-4">
+                      Save changes
+                    </button>
                   </div>
                 </.form>
               </div>
@@ -67,7 +71,9 @@
                       </p>
                     </div>
                     <div class="flex-1 min-w-0">
-                      <h3 class="text-sm font-semibold text-base-content truncate">{event.title}</h3>
+                      <h3 class="text-sm font-semibold text-base-content truncate">
+                        {event.title}
+                      </h3>
                       <p class="text-xs text-base-content/50 mt-0.5">
                         {format_datetime(event.starts_at, event.timezone)}
                         <%= if event.ends_at do %>
@@ -81,7 +87,9 @@
                         </p>
                       <% end %>
                       <%= if event.description do %>
-                        <p class="text-sm text-base-content/65 mt-2 leading-relaxed">{event.description}</p>
+                        <p class="text-sm text-base-content/65 mt-2 leading-relaxed">
+                          {event.description}
+                        </p>
                       <% end %>
                     </div>
                   </div>
@@ -113,12 +121,30 @@
                 </div>
 
                 <div class="flex gap-2 mt-4 pt-3 border-t border-base-300">
-                  <button phx-click="rsvp" phx-value-event_id={event.id} phx-value-status="going"
-                    class="btn btn-xs btn-outline btn-success rounded-md">Going</button>
-                  <button phx-click="rsvp" phx-value-event_id={event.id} phx-value-status="maybe"
-                    class="btn btn-xs btn-outline btn-warning rounded-md">Maybe</button>
-                  <button phx-click="rsvp" phx-value-event_id={event.id} phx-value-status="not_going"
-                    class="btn btn-xs btn-ghost rounded-md text-base-content/50">Can't go</button>
+                  <button
+                    phx-click="rsvp"
+                    phx-value-event_id={event.id}
+                    phx-value-status="going"
+                    class="btn btn-xs btn-outline btn-success rounded-md"
+                  >
+                    Going
+                  </button>
+                  <button
+                    phx-click="rsvp"
+                    phx-value-event_id={event.id}
+                    phx-value-status="maybe"
+                    class="btn btn-xs btn-outline btn-warning rounded-md"
+                  >
+                    Maybe
+                  </button>
+                  <button
+                    phx-click="rsvp"
+                    phx-value-event_id={event.id}
+                    phx-value-status="not_going"
+                    class="btn btn-xs btn-ghost rounded-md text-base-content/50"
+                  >
+                    Can't go
+                  </button>
                 </div>
               </div>
             <% end %>

@@ -36,17 +36,30 @@
       <div class="flex items-center gap-4">
         <%= if @current_scope do %>
           <span class="text-xs text-base-content/50">{@current_scope.user.email}</span>
-          <.link href={~p"/users/settings"} class="text-xs text-base-content/60 hover:text-base-content transition-colors">
+          <.link
+            href={~p"/users/settings"}
+            class="text-xs text-base-content/60 hover:text-base-content transition-colors"
+          >
             Settings
           </.link>
-          <.link href={~p"/users/log-out"} method="delete" class="text-xs text-base-content/60 hover:text-base-content transition-colors">
+          <.link
+            href={~p"/users/log-out"}
+            method="delete"
+            class="text-xs text-base-content/60 hover:text-base-content transition-colors"
+          >
             Log out
           </.link>
         <% else %>
-          <.link href={~p"/users/log-in"} class="text-xs text-base-content/60 hover:text-base-content transition-colors">
+          <.link
+            href={~p"/users/log-in"}
+            class="text-xs text-base-content/60 hover:text-base-content transition-colors"
+          >
             Log in
           </.link>
-          <.link href={~p"/users/register"} class="text-xs text-base-content/60 hover:text-base-content transition-colors">
+          <.link
+            href={~p"/users/register"}
+            class="text-xs text-base-content/60 hover:text-base-content transition-colors"
+          >
             Register
           </.link>
         <% end %>

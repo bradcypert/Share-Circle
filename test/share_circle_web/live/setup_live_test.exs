@@ -23,11 +23,13 @@ defmodule ShareCircleWeb.SetupLiveTest do
 
       html =
         lv
-        |> form("form", account: %{
-          display_name: "Ada Lovelace",
-          email: "ada@example.com",
-          password: "correct-horse-battery-staple"
-        })
+        |> form("form",
+          account: %{
+            display_name: "Ada Lovelace",
+            email: "ada@example.com",
+            password: "correct-horse-battery-staple"
+          }
+        )
         |> render_submit()
 
       assert html =~ "Set up your first family"

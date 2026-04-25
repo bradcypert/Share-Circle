@@ -30,7 +30,12 @@ defmodule ShareCircleWeb.Api.V1.AuthController do
   def login(conn, %{"email" => email, "password" => password}) do
     case Accounts.get_user_by_email_and_password(email, password) do
       nil ->
-        Response.render_error(conn, :unauthorized, "invalid_credentials", "Invalid email or password")
+        Response.render_error(
+          conn,
+          :unauthorized,
+          "invalid_credentials",
+          "Invalid email or password"
+        )
 
       user ->
         token = Accounts.generate_user_api_token(user)
@@ -71,7 +76,12 @@ defmodule ShareCircleWeb.Api.V1.AuthController do
       Response.render_data(conn, %{user: UserJSON.render(user), token: new_token})
     else
       {:error, :invalid_or_expired_token} ->
-        Response.render_error(conn, :unprocessable_entity, "invalid_token", "Token is invalid or has expired")
+        Response.render_error(
+          conn,
+          :unprocessable_entity,
+          "invalid_token",
+          "Token is invalid or has expired"
+        )
 
       {:error, changeset} ->
         {:error, changeset}
@@ -85,7 +95,12 @@ defmodule ShareCircleWeb.Api.V1.AuthController do
         Response.render_data(conn, UserJSON.render(user))
 
       {:error, :invalid_or_expired_token} ->
-        Response.render_error(conn, :unprocessable_entity, "invalid_token", "Token is invalid or has expired")
+        Response.render_error(
+          conn,
+          :unprocessable_entity,
+          "invalid_token",
+          "Token is invalid or has expired"
+        )
     end
   end
 
@@ -100,7 +115,12 @@ defmodule ShareCircleWeb.Api.V1.AuthController do
         send_resp(conn, :no_content, "")
 
       {:error, :already_confirmed} ->
-        Response.render_error(conn, :unprocessable_entity, "already_confirmed", "Email is already confirmed")
+        Response.render_error(
+          conn,
+          :unprocessable_entity,
+          "already_confirmed",
+          "Email is already confirmed"
+        )
     end
   end
 

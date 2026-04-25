@@ -10,9 +10,10 @@ defmodule ShareCircleWeb.Api.V1.NotificationPreferenceController do
     scope = conn.assigns.current_scope
     prefs = Notifications.list_preferences(scope)
 
-    data = Enum.map(prefs, fn p ->
-      %{id: p.id, kind: p.kind, family_id: p.family_id, channels: p.channels}
-    end)
+    data =
+      Enum.map(prefs, fn p ->
+        %{id: p.id, kind: p.kind, family_id: p.family_id, channels: p.channels}
+      end)
 
     Response.render_collection(conn, data, %{})
   end

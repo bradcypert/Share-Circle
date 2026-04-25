@@ -10,7 +10,11 @@ defmodule ShareCircleWeb.ConversationChannel do
     user = socket.assigns.current_user
 
     member =
-      Repo.get_by(ConversationMember, conversation_id: conversation_id, user_id: user.id, left_at: nil)
+      Repo.get_by(ConversationMember,
+        conversation_id: conversation_id,
+        user_id: user.id,
+        left_at: nil
+      )
 
     if member do
       PubSub.subscribe(PubSub.conversation_topic(conversation_id))

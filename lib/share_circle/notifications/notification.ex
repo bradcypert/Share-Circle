@@ -26,8 +26,15 @@ defmodule ShareCircle.Notifications.Notification do
 
   def create_changeset(attrs) do
     %__MODULE__{}
-    |> cast(attrs, [:family_id, :recipient_user_id, :actor_user_id, :kind,
-                    :subject_type, :subject_id, :payload])
+    |> cast(attrs, [
+      :family_id,
+      :recipient_user_id,
+      :actor_user_id,
+      :kind,
+      :subject_type,
+      :subject_id,
+      :payload
+    ])
     |> validate_required([:family_id, :recipient_user_id, :kind])
     |> validate_inclusion(:kind, @valid_kinds)
   end

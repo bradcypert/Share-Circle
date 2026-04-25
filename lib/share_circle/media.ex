@@ -39,7 +39,8 @@ defmodule ShareCircle.Media do
       }
 
       with {:ok, session} <- Repo.insert(UploadSession.create_changeset(session_attrs)),
-           {:ok, put_result} <- Storage.presigned_put(storage_key, params["mime_type"], params["byte_size"]) do
+           {:ok, put_result} <-
+             Storage.presigned_put(storage_key, params["mime_type"], params["byte_size"]) do
         {:ok, {session, put_result}}
       end
     end
@@ -110,7 +111,9 @@ defmodule ShareCircle.Media do
 
   defp get_pending_session(session_id, family_id) do
     case Repo.get_by(UploadSession, id: session_id, family_id: family_id, completed_at: nil) do
-      nil -> {:error, :not_found}
+      nil ->
+        {:error, :not_found}
+
       session ->
         if DateTime.compare(DateTime.utc_now(), session.expires_at) == :gt do
           {:error, :expired}
@@ -121,11 +124,13 @@ defmodule ShareCircle.Media do
   end
 
   defp validate_mime_type(nil), do: {:error, :invalid_mime_type}
+
   defp validate_mime_type(mime) do
     if mime in @allowed_mime_types, do: :ok, else: {:error, :invalid_mime_type}
   end
 
   defp check_quota(_family, nil), do: {:error, :invalid_byte_size}
+
   defp check_quota(family, byte_size) when is_integer(byte_size) and byte_size > 0 do
     if family.storage_used_bytes + byte_size <= family.storage_quota_bytes do
       :ok
@@ -133,6 +138,7 @@ defmodule ShareCircle.Media do
       {:error, :quota_exceeded}
     end
   end
+
   defp check_quota(_family, _), do: {:error, :invalid_byte_size}
 
   defp mime_to_kind(mime) do

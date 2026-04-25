@@ -45,10 +45,15 @@ const PushNotifications = {
   },
 
   updated() {
-    // Re-wire after LiveView re-renders (button may have re-appeared)
+    // Re-wire after LiveView re-renders (button may have re-appeared).
+    // Replace the node to drop any previous listeners before adding a new one.
     const vapidKey = this.el.dataset.vapidKey
     const btn = this.el.querySelector("[data-push-subscribe]")
-    if (btn && vapidKey) btn.addEventListener("click", () => this._subscribe(vapidKey))
+    if (btn && vapidKey) {
+      const fresh = btn.cloneNode(true)
+      btn.replaceWith(fresh)
+      fresh.addEventListener("click", () => this._subscribe(vapidKey))
+    }
   },
 
   async _subscribe(vapidKey) {
@@ -130,6 +135,10 @@ window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 
 // connect if there are any LiveViews on the page
 liveSocket.connect()
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch(err => console.error("SW registration failed:", err))
+}
 
 // expose liveSocket on window for web console debug logs and latency simulation:
 // >> liveSocket.enableDebug()

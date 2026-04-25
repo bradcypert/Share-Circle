@@ -4,11 +4,12 @@
   <header class="border-b border-base-300 px-3 sm:px-6 py-3 flex items-center justify-between">
     <div class="flex items-center gap-3">
       <.link
-        navigate={if @back_family_id, do: ~p"/families/#{@back_family_id}/feed", else: ~p"/families"}
+        navigate={
+          if @back_family_id, do: ~p"/families/#{@back_family_id}/feed", else: ~p"/families"
+        }
         class="text-sm text-base-content/50 hover:text-base-content transition-colors flex items-center gap-1"
       >
-        <.icon name="hero-arrow-left" class="size-4" />
-        Back
+        <.icon name="hero-arrow-left" class="size-4" /> Back
       </.link>
     </div>
     <div class="flex items-center gap-2">
@@ -23,7 +24,10 @@
     </div>
     <div class="flex items-center gap-3">
       <%= if @unread_count > 0 do %>
-        <button phx-click="mark_all_read" class="text-xs text-base-content/45 hover:text-base-content transition-colors">
+        <button
+          phx-click="mark_all_read"
+          class="text-xs text-base-content/45 hover:text-base-content transition-colors"
+        >
           Mark all read
         </button>
       <% end %>
@@ -36,8 +40,7 @@
         >
           <%= if @push_subscribed do %>
             <span class="text-xs text-base-content/40 flex items-center gap-1">
-              <.icon name="hero-bell-solid" class="size-3.5 text-primary" />
-              Push on
+              <.icon name="hero-bell-solid" class="size-3.5 text-primary" /> Push on
             </span>
           <% else %>
             <button
@@ -45,8 +48,7 @@
               data-push-subscribe
               class="text-xs text-base-content/45 hover:text-base-content transition-colors flex items-center gap-1"
             >
-              <.icon name="hero-bell" class="size-3.5" />
-              Enable push
+              <.icon name="hero-bell" class="size-3.5" /> Enable push
             </button>
           <% end %>
         </div>
@@ -70,7 +72,8 @@
             <div class={[
               "w-2 h-2 rounded-full flex-shrink-0 mt-2",
               if(is_nil(n.read_at), do: "bg-primary", else: "bg-transparent")
-            ]}></div>
+            ]}>
+            </div>
             <div class="flex-1 min-w-0">
               <p class="text-sm text-base-content leading-snug">{notification_text(n)}</p>
               <%= if preview = Map.get(n.payload || %{}, "preview") do %>

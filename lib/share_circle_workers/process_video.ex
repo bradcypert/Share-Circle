@@ -57,10 +57,15 @@ defmodule ShareCircle.Workers.ProcessVideo do
     variant_key = variant_key(item.storage_key, "thumb_256")
 
     args = [
-      "-y", "-ss", "1",
-      "-i", src_path,
-      "-vframes", "1",
-      "-vf", "scale=256:256:force_original_aspect_ratio=increase,crop=256:256",
+      "-y",
+      "-ss",
+      "1",
+      "-i",
+      src_path,
+      "-vframes",
+      "1",
+      "-vf",
+      "scale=256:256:force_original_aspect_ratio=increase,crop=256:256",
       out_path
     ]
 
@@ -98,14 +103,22 @@ defmodule ShareCircle.Workers.ProcessVideo do
 
     args = [
       "-y",
-      "-i", src_path,
-      "-vf", "scale=-2:720",
-      "-c:v", "libx264",
-      "-preset", "fast",
-      "-crf", "23",
-      "-c:a", "aac",
-      "-b:a", "128k",
-      "-movflags", "+faststart",
+      "-i",
+      src_path,
+      "-vf",
+      "scale=-2:720",
+      "-c:v",
+      "libx264",
+      "-preset",
+      "fast",
+      "-crf",
+      "23",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "128k",
+      "-movflags",
+      "+faststart",
       out_path
     ]
 

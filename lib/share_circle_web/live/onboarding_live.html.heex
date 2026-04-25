@@ -11,7 +11,11 @@
         <div>
           <h2 class="font-semibold text-base-content mb-3">Your name</h2>
           <.form for={@form} phx-submit="save_profile" class="flex gap-2">
-            <.input field={@form[:display_name]} placeholder="How should we call you?" class="flex-1" />
+            <.input
+              field={@form[:display_name]}
+              placeholder="How should we call you?"
+              class="flex-1"
+            />
             <.button type="submit">Save</.button>
           </.form>
         </div>
@@ -24,15 +28,24 @@
           <ul class="space-y-2 text-sm text-base-content/70">
             <li class="flex items-start gap-2">
               <span class="text-primary mt-0.5">▸</span>
-              <span><strong class="text-base-content">Feed</strong> — share posts, photos, and videos with your family</span>
+              <span>
+                <strong class="text-base-content">Feed</strong>
+                — share posts, photos, and videos with your family
+              </span>
             </li>
             <li class="flex items-start gap-2">
               <span class="text-primary mt-0.5">▸</span>
-              <span><strong class="text-base-content">Chat</strong> — message the whole family or start a private conversation</span>
+              <span>
+                <strong class="text-base-content">Chat</strong>
+                — message the whole family or start a private conversation
+              </span>
             </li>
             <li class="flex items-start gap-2">
               <span class="text-primary mt-0.5">▸</span>
-              <span><strong class="text-base-content">Events</strong> — keep track of what's coming up and RSVP</span>
+              <span>
+                <strong class="text-base-content">Events</strong>
+                — keep track of what's coming up and RSVP
+              </span>
             </li>
           </ul>
         </div>

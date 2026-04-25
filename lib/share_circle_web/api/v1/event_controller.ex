@@ -54,6 +54,7 @@ defmodule ShareCircleWeb.Api.V1.EventController do
   end
 
   defp maybe_put(opts, _key, nil, _), do: opts
+
   defp maybe_put(opts, key, val, parser) do
     case parser.(val) do
       nil -> opts

@@ -50,13 +50,16 @@
               <td class="text-base-content/80">
                 <div class="flex items-center gap-2">
                   <span class="text-xs whitespace-nowrap">
-                    {format_bytes(family.storage_used_bytes)} / {format_bytes(family.storage_quota_bytes)}
+                    {format_bytes(family.storage_used_bytes)} / {format_bytes(
+                      family.storage_quota_bytes
+                    )}
                   </span>
                   <progress
                     class="progress progress-primary w-16"
                     value={storage_pct(family.storage_used_bytes, family.storage_quota_bytes)}
                     max="100"
-                  ></progress>
+                  >
+                  </progress>
                 </div>
               </td>
               <td>
@@ -79,7 +82,9 @@
                     />
                     <span class="text-xs text-base-content/40">members</span>
                     <button type="submit" class="btn btn-xs btn-primary">Save</button>
-                    <button type="button" phx-click="cancel_quota" class="btn btn-xs btn-ghost">Cancel</button>
+                    <button type="button" phx-click="cancel_quota" class="btn btn-xs btn-ghost">
+                      Cancel
+                    </button>
                   </.form>
                 <% else %>
                   <button

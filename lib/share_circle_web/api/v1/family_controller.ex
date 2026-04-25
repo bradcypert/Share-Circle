@@ -9,7 +9,8 @@ defmodule ShareCircleWeb.Api.V1.FamilyController do
 
   # POST /api/v1/families
   def create(conn, %{"family" => params}) do
-    with {:ok, {family, _membership}} <- Families.create_family(conn.assigns.current_scope, params) do
+    with {:ok, {family, _membership}} <-
+           Families.create_family(conn.assigns.current_scope, params) do
       Chat.ensure_family_conversation(family.id)
 
       conn

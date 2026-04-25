@@ -26,7 +26,8 @@ defmodule ShareCircleWeb.SetupLive do
 
   @impl true
   def handle_event("save_account", %{"account" => attrs}, socket) do
-    {:noreply, assign(socket, :account_form, to_form(attrs, as: "account")) |> assign(:step, :family)}
+    {:noreply,
+     assign(socket, :account_form, to_form(attrs, as: "account")) |> assign(:step, :family)}
   end
 
   def handle_event("save_family", %{"family" => family_attrs}, socket) do
@@ -54,7 +55,9 @@ defmodule ShareCircleWeb.SetupLive do
     {:noreply, assign(socket, :step, :account)}
   end
 
-  defp account_form, do: to_form(%{"email" => "", "display_name" => "", "password" => ""}, as: "account")
+  defp account_form,
+    do: to_form(%{"email" => "", "display_name" => "", "password" => ""}, as: "account")
+
   defp family_form, do: to_form(%{"name" => "", "slug" => "", "timezone" => "UTC"}, as: "family")
 
   defp format_errors(changeset) do

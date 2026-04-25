@@ -51,7 +51,14 @@ defmodule ShareCircle.RateLimiter do
 
   @impl true
   def init(_) do
-    :ets.new(@table, [:named_table, :public, :set, read_concurrency: true, write_concurrency: true])
+    :ets.new(@table, [
+      :named_table,
+      :public,
+      :set,
+      read_concurrency: true,
+      write_concurrency: true
+    ])
+
     schedule_cleanup()
     {:ok, %{}}
   end

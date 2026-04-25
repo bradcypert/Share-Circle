@@ -23,7 +23,16 @@ defmodule ShareCircle.Media.MediaVariant do
 
   def changeset(attrs) do
     %__MODULE__{}
-    |> cast(attrs, [:media_item_id, :variant_kind, :storage_key, :mime_type, :byte_size, :width, :height, :duration_ms])
+    |> cast(attrs, [
+      :media_item_id,
+      :variant_kind,
+      :storage_key,
+      :mime_type,
+      :byte_size,
+      :width,
+      :height,
+      :duration_ms
+    ])
     |> validate_required([:media_item_id, :variant_kind, :storage_key, :mime_type, :byte_size])
     |> validate_inclusion(:variant_kind, @valid_kinds)
     |> unique_constraint([:media_item_id, :variant_kind])

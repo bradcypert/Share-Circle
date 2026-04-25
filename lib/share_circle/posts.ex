@@ -50,8 +50,7 @@ defmodule ShareCircle.Posts do
 
     query =
       from p in Post,
-        where:
-          p.family_id == ^family.id and p.user_id == ^author_id and is_nil(p.deleted_at),
+        where: p.family_id == ^family.id and p.user_id == ^author_id and is_nil(p.deleted_at),
         order_by: [desc: p.inserted_at, desc: p.id],
         limit: ^(limit + 1),
         preload: [:author, post_media: [media_item: :variants]]
@@ -85,7 +84,9 @@ defmodule ShareCircle.Posts do
                  |> Post.changeset(Map.put(attrs, "kind", kind))
                  |> Repo.insert!()
 
-               Enum.with_index(media_ids, fn media_id, i ->
+               media_ids
+               |> Enum.with_index()
+               |> Enum.each(fn {media_id, i} ->
                  Repo.insert!(
                    PostMedia.changeset(%{
                      post_id: post.id,
@@ -227,8 +228,7 @@ defmodule ShareCircle.Posts do
 
   def list_reactions_for_posts(%Scope{family: family}, post_ids) do
     from(r in Reaction,
-      where:
-        r.subject_type == "post" and r.subject_id in ^post_ids and r.family_id == ^family.id,
+      where: r.subject_type == "post" and r.subject_id in ^post_ids and r.family_id == ^family.id,
       select: {r.subject_id, r.emoji, r.user_id}
     )
     |> Repo.all()
@@ -240,7 +240,12 @@ defmodule ShareCircle.Posts do
   end
 
   @doc "Adds a reaction to a post or comment. Idempotent — re-reacting with the same emoji is a no-op."
-  def react(%Scope{user: user, family: family, membership: membership}, subject_type, subject_id, emoji) do
+  def react(
+        %Scope{user: user, family: family, membership: membership},
+        subject_type,
+        subject_id,
+        emoji
+      ) do
     with :ok <- Policy.authorize(membership, :react) do
       %Reaction{family_id: family.id, user_id: user.id}
       |> Reaction.changeset(%{subject_type: subject_type, subject_id: subject_id, emoji: emoji})
@@ -339,7 +344,9 @@ defmodule ShareCircle.Posts do
 
   defp tap_broadcast(error, _fun), do: error
 
-  defp infer_kind(%{"kind" => kind}, _media_ids) when kind in ~w(text photo video album link), do: kind
+  defp infer_kind(%{"kind" => kind}, _media_ids) when kind in ~w(text photo video album link),
+    do: kind
+
   defp infer_kind(_attrs, [_]), do: "photo"
   defp infer_kind(_attrs, [_ | _]), do: "album"
   defp infer_kind(_attrs, _), do: "text"
